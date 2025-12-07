@@ -116,14 +116,15 @@
 </div>
 
 <script>
-  const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";  // ← 당신의 Worker 주소
+  // 당신의 Cloudflare Worker 주소
+  const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";
 
   const $ = (id) => document.getElementById(id);
   const urlInput = $("urlInput");
   const extractBtn = $("extractBtn");
-  const copyBtn = $("copyBtn");
-  const output = $("output");
-  const status = $("status");
+  const copyBtn   = $("copyBtn");
+  const output    = $("output");
+  const status    = $("status");
 
   function setStatus(msg, type = "") {
     status.textContent = msg || "";
@@ -137,69 +138,119 @@
       return;
     }
 
+    output.value = "";
     setStatus("네이버 HTML 가져오는 중...", "");
+    extractBtn.disabled = true;
 
     let res;
+    // 15초 타임아웃
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+
     try {
       const queryUrl = WORKER_URL + "?url=" + encodeURIComponent(url);
-      res = await fetch(queryUrl);
+      res = await fetch(queryUrl, { signal: controller.signal });
     } catch (e) {
-      setStatus("Worker 연결 실패!", "error");
+      clearTimeout(timer);
+      if (e.name === "AbortError") {
+        setStatus("요청 시간이 너무 길어서 중단했습니다. (타임아웃)", "error");
+      } else {
+        setStatus("Worker 연결 중 오류가 발생했습니다.", "error");
+        console.error(e);
+      }
+      extractBtn.disabled = false;
       return;
     }
+    clearTimeout(timer);
 
     if (!res.ok) {
       setStatus("Worker 에러: " + res.status, "error");
+      extractBtn.disabled = false;
       return;
     }
 
-    let htmlText = await res.text();
+    let htmlText = "";
+    try {
+      htmlText = await res.text();
+    } catch (e) {
+      setStatus("응답 텍스트를 읽는 중 오류가 발생했습니다.", "error");
+      extractBtn.disabled = false;
+      return;
+    }
+
     setStatus("HTML 분석 중...", "");
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlText, "text/html");
+    let doc;
+    try {
+      const parser = new DOMParser();
+      doc = parser.parseFromString(htmlText, "text/html");
+    } catch (e) {
+      setStatus("HTML 파싱 중 오류가 발생했습니다.", "error");
+      console.error(e);
+      extractBtn.disabled = false;
+      return;
+    }
 
     const clean = (el) =>
       el.innerText.replace(/\s+\n/g, "\n").replace(/\n{2,}/g, "\n\n").trim();
 
-    let content =
-      clean(doc.querySelector(".se-main-container, .se-viewer, .se_component_wrap.sect_dsc, .se_viewArea")) ||
-      clean(doc.querySelector("#postViewArea, .post_view, ._postView")) ||
-      clean(doc.querySelector(".article_view, #tbody, .ArticleContent")) ||
-      "";
+    let content = "";
+    try {
+      content =
+        clean(doc.querySelector(".se-main-container, .se-viewer, .se_component_wrap.sect_dsc, .se_viewArea")) ||
+        clean(doc.querySelector("#postViewArea, .post_view, ._postView")) ||
+        clean(doc.querySelector(".article_view, #tbody, .ArticleContent")) ||
+        "";
+    } catch (e) {
+      console.error(e);
+    }
 
     if (!content) {
-      setStatus("본문을 찾지 못했습니다.", "error");
+      setStatus("본문을 찾지 못했습니다. (비공개 글이거나 구조가 특이할 수 있습니다.)", "error");
+      extractBtn.disabled = false;
       return;
     }
 
     const title = (doc.querySelector("title")?.innerText || "").trim();
-    let finalText = (title ? `[제목]\n${title}\n\n` : "") + content;
+    const finalText = (title ? `[제목]\n${title}\n\n` : "") + content;
     output.value = finalText;
 
-    try {
-      await navigator.clipboard.writeText(finalText);
-      setStatus("본문 추출 완료! 클립보드에 복사됨", "success");
-    } catch {
-      setStatus("본문 추출 완료! (복사는 실패)", "success");
+    // 클립보드는 기다리지 않고 백그라운드로 실행
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(finalText)
+        .then(() => {
+          setStatus("본문 추출 완료! (클립보드에 복사됨)", "success");
+        })
+        .catch(() => {
+          setStatus("본문 추출 완료! (복사는 실패, 직접 복사하세요)", "success");
+        });
+    } else {
+      setStatus("본문 추출 완료! (브라우저가 자동 복사를 지원하지 않습니다)", "success");
     }
+
+    extractBtn.disabled = false;
   }
 
   async function copyAgain() {
     const text = output.value;
-    if (!text.trim()) return alert("복사할 내용이 없습니다.");
-
-    try {
-      await navigator.clipboard.writeText(text);
-      setStatus("복사되었습니다.", "success");
-    } catch {
-      setStatus("복사 실패. 직접 복사하세요.", "error");
+    if (!text.trim()) {
+      alert("복사할 내용이 없습니다.");
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        setStatus("결과를 다시 복사했습니다.", "success");
+      } catch (e) {
+        setStatus("복사 실패. 직접 선택해서 복사하세요.", "error");
+      }
+    } else {
+      setStatus("브라우저가 자동 복사를 지원하지 않습니다.", "error");
     }
   }
 
   extractBtn.addEventListener("click", extract);
   copyBtn.addEventListener("click", copyAgain);
-
   urlInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") extract();
   });
