@@ -163,9 +163,9 @@
       el.innerText.replace(/\s+\n/g, "\n").replace(/\n{2,}/g, "\n\n").trim();
 
     let content =
-      clean(doc.querySelector(".se-main-container")) ||
-      clean(doc.querySelector("#postViewArea")) ||
-      clean(doc.querySelector(".article_view")) ||
+      clean(doc.querySelector(".se-main-container, .se-viewer, .se_component_wrap.sect_dsc, .se_viewArea")) ||
+      clean(doc.querySelector("#postViewArea, .post_view, ._postView")) ||
+      clean(doc.querySelector(".article_view, #tbody, .ArticleContent")) ||
       "";
 
     if (!content) {
