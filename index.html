@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>네이버 글 자동 추출기 (GitHub Pages + Cloudflare Worker)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    .wrapper {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #020617;
+      border-radius: 16px;
+      padding: 24px 20px 28px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+      border: 1px solid #1f2937;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin: 0 0 8px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #1d4ed8;
+      color: #e5e7eb;
+      margin-bottom: 12px;
+    }
+    label {
+      font-size: 0.85rem;
+      color: #9ca3af;
+    }
+    input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 6px;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      white-space: pre-wrap;
+    }
+    button {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      background: #22c55e;
+      color: #022c22;
+      margin-top: 4px;
+    }
+    button:hover {
+      background: #16a34a;
+    }
+    .secondary {
+      background: #0f172a;
+      color: #e5e7eb;
+      margin-top: 8px;
+    }
+    .secondary:hover {
+      background: #111827;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: #9ca3af;
+      min-height: 1.4em;
+    }
+    .status.error {
+      color: #f97373;
+    }
+    .status.success {
+      color: #4ade80;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <h1>네이버 글 자동 추출기</h1>
+  <div class="badge">GitHub Pages + Cloudflare Worker</div>
+
+  <p style="font-size:0.9rem; line-height:1.6; margin-bottom:12px;">
+    네이버 블로그/카페 글 주소(URL)만 넣으면,<br />
+    Worker가 네이버 HTML을 가져오고, 이 페이지가 본문만 추출하여 표시합니다.
+  </p>
+
+  <label for="urlInput">네이버 글 주소</label>
+  <input id="urlInput" type="text" placeholder="예: https://blog.naver.com/..."/>
+
+  <button id="extractBtn">본문 추출하기</button>
+  <button id="copyBtn" class="secondary">복사하기</button>
+
+  <div class="status" id="status"></div>
+
+  <label for="output">추출된 본문</label>
+  <textarea id="output" placeholder="여기에 본문이 표시됩니다."></textarea>
+</div>
+
+<script>
+  const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";  // ← 당신의 Worker 주소
+
+  const $ = (id) => document.getElementById(id);
+  const urlInput = $("urlInput");
+  const extractBtn = $("extractBtn");
+  const copyBtn = $("copyBtn");
+  const output = $("output");
+  const status = $("status");
+
+  function setStatus(msg, type = "") {
+    status.textContent = msg || "";
+    status.className = "status" + (type ? " " + type : "");
+  }
+
+  async function extract() {
+    const url = urlInput.value.trim();
+    if (!url) {
+      alert("네이버 글 주소를 입력하세요.");
+      return;
+    }
+
+    setStatus("네이버 HTML 가져오는 중...", "");
+
+    let res;
+    try {
+      const queryUrl = WORKER_URL + "?url=" + encodeURIComponent(url);
+      res = await fetch(queryUrl);
+    } catch (e) {
+      setStatus("Worker 연결 실패!", "error");
+      return;
+    }
+
+    if (!res.ok) {
+      setStatus("Worker 에러: " + res.status, "error");
+      return;
+    }
+
+    let htmlText = await res.text();
+    setStatus("HTML 분석 중...", "");
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlText, "text/html");
+
+    const clean = (el) =>
+      el.innerText.replace(/\s+\n/g, "\n").replace(/\n{2,}/g, "\n\n").trim();
+
+    let content =
+      clean(doc.querySelector(".se-main-container")) ||
+      clean(doc.querySelector("#postViewArea")) ||
+      clean(doc.querySelector(".article_view")) ||
+      "";
+
+    if (!content) {
+      setStatus("본문을 찾지 못했습니다.", "error");
+      return;
+    }
+
+    const title = (doc.querySelector("title")?.innerText || "").trim();
+    let finalText = (title ? `[제목]\n${title}\n\n` : "") + content;
+    output.value = finalText;
+
+    try {
+      await navigator.clipboard.writeText(finalText);
+      setStatus("본문 추출 완료! 클립보드에 복사됨", "success");
+    } catch {
+      setStatus("본문 추출 완료! (복사는 실패)", "success");
+    }
+  }
+
+  async function copyAgain() {
+    const text = output.value;
+    if (!text.trim()) return alert("복사할 내용이 없습니다.");
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus("복사되었습니다.", "success");
+    } catch {
+      setStatus("복사 실패. 직접 복사하세요.", "error");
+    }
+  }
+
+  extractBtn.addEventListener("click", extract);
+  copyBtn.addEventListener("click", copyAgain);
+
+  urlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") extract();
+  });
+</script>
+
+</body>
+</html>
