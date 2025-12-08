@@ -2,113 +2,57 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>네이버 글 자동 추출기 (GitHub Pages + Cloudflare Worker)</title>
+  <title>네이버 글 자동 추출기</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
-      margin: 0;
-      padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-      background: #020617;
-      color: #e5e7eb;
+      margin: 0; padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617; color: #e5e7eb;
     }
     .wrapper {
-      max-width: 720px;
-      margin: 0 auto;
-      background: #020617;
-      border-radius: 16px;
-      padding: 24px 20px 28px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
-      border: 1px solid #1f2937;
+      max-width: 720px; margin: 0 auto;
+      padding: 24px 20px; border-radius: 16px;
+      background: #020617; border: 1px solid #1f2937;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
     }
-    h1 {
-      font-size: 1.4rem;
-      margin: 0 0 8px;
-    }
-    .badge {
-      display: inline-block;
-      font-size: 0.75rem;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #1d4ed8;
-      color: #e5e7eb;
-      margin-bottom: 12px;
-    }
-    label {
-      font-size: 0.85rem;
-      color: #9ca3af;
-    }
+    h1 { margin: 0 0 10px; font-size: 1.4rem; }
     input, textarea {
-      width: 100%;
-      box-sizing: border-box;
-      margin-top: 6px;
-      margin-bottom: 14px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #1f2937;
-      background: #020617;
-      color: #e5e7eb;
-      font-size: 0.9rem;
-      font-family: inherit;
+      width: 100%; padding: 12px;
+      background: #0f172a; border: 1px solid #1f2937;
+      color: #e5e7eb; border-radius: 10px;
+      margin-top: 6px; margin-bottom: 14px;
     }
-    textarea {
-      min-height: 220px;
-      resize: vertical;
-      white-space: pre-wrap;
-    }
+    textarea { min-height: 230px; white-space: pre-wrap; }
     button {
-      width: 100%;
-      padding: 11px 14px;
-      border-radius: 999px;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.95rem;
-      background: #22c55e;
-      color: #022c22;
-      margin-top: 4px;
+      width: 100%; padding: 12px; border-radius: 999px;
+      border: none; font-weight: 700; cursor: pointer;
+      margin-top: 6px;
     }
-    button:hover {
-      background: #16a34a;
+    #extractBtn { background: #22c55e; color: #022c22; }
+    #extractBtn:hover { background: #16a34a; }
+    #copyBtn { background: #1e293b; color: #e5e7eb; }
+    #copyBtn:hover { background: #334155; }
+    #shareBtn { background: #3b82f6; color: white; }
+    #shareBtn:hover { background: #2563eb; }
+
+    #homeBtn {
+      background:#0f172a; color:#e5e7eb;
+      margin-top:12px;
     }
-    .secondary {
-      background: #0f172a;
-      color: #e5e7eb;
-      margin-top: 8px;
-    }
-    .secondary:hover {
-      background: #111827;
-    }
-    .status {
-      margin-top: 10px;
-      font-size: 0.8rem;
-      color: #9ca3af;
-      min-height: 1.4em;
-    }
-    .status.error {
-      color: #f97373;
-    }
-    .status.success {
-      color: #4ade80;
-    }
+    #homeBtn:hover { background:#1e293b; }
+
+    .status { font-size: 0.8rem; margin: 8px 0; color: #9ca3af; }
+    .success { color: #4ade80 !important; }
+    .error { color: #f87171 !important; }
   </style>
 </head>
 
 <body>
 <div class="wrapper">
   <h1>네이버 글 자동 추출기</h1>
-  <div class="badge">GitHub Pages + Cloudflare Worker</div>
 
-  <p style="font-size:0.9rem; line-height:1.6; margin-bottom:12px;">
-    네이버 블로그/카페 글 주소만 넣으면 본문만 깨끗하게 정리해줍니다.<br>
-    <small>
-      · 이모티콘 제거 / 문장부호 정리 / 문단 자동정렬<br>
-      · 날짜, "URL 복사", "이웃추가", "공유하기", "신고하기" 등 자동 제거<br>
-      · 광고 문구/광고 블록 최대한 제외, 제목은 빼고 <b>본문만</b> 복사됩니다.
-    </small>
-  </p>
-
-  <label for="urlInput">네이버 글 주소</label>
+  <label>네이버 글 주소</label>
   <input
     id="urlInput"
     type="text"
@@ -117,217 +61,136 @@
   />
 
   <button id="extractBtn">본문 추출하기</button>
-  <button id="copyBtn" class="secondary">복사하기</button>
+  <button id="copyBtn">복사하기</button>
+  <button id="shareBtn">공유하기</button>
+  <button id="homeBtn">만든이 홈페이지 이동</button>
 
-  <div class="status" id="status"></div>
+  <div id="status" class="status"></div>
 
-  <label for="output">추출된 본문</label>
-  <textarea id="output" placeholder="여기에 본문이 표시됩니다."></textarea>
+  <label>추출된 본문</label>
+  <textarea id="output"></textarea>
 </div>
 
 <script>
-  // Cloudflare Worker 주소
   const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";
 
   const $ = (id) => document.getElementById(id);
-  const urlInput   = $("urlInput");
+  const urlInput = $("urlInput");
   const extractBtn = $("extractBtn");
-  const copyBtn    = $("copyBtn");
-  const output     = $("output");
-  const status     = $("status");
+  const copyBtn = $("copyBtn");
+  const shareBtn = $("shareBtn");
+  const homeBtn = $("homeBtn");
+  const output = $("output");
+  const status = $("status");
 
-  function setStatus(msg, type = "") {
-    status.textContent = msg || "";
-    status.className = "status" + (type ? " " + type : "");
+  function setStatus(msg, type="") {
+    status.textContent = msg;
+    status.className = "status " + type;
   }
 
-  // 블로그 예쁜주소 → PostView.naver 형식으로 변환
-  function normalizeNaverUrl(raw) {
-    let url = raw.trim().replace(/\s+/g, "");
-    const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/\?]+)\/(\d+)/i);
-    if (m) {
-      return `https://blog.naver.com/PostView.naver?blogId=${m[1]}&logNo=${m[2]}`;
-    }
+  // /아이디/글번호 → PostView.naver 변환
+  function normalizeUrl(url) {
+    url = url.trim();
+    const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
+    if (m) return `https://blog.naver.com/PostView.naver?blogId=${m[1]}&logNo=${m[2]}`;
     return url;
   }
 
-  // 이모지 제거 + 네이버 노이즈 제거 + 광고 제거 + 문장부호 정리 + 문단 정렬
+  // 본문 정리
   function normalizeText(text) {
     if (!text) return "";
 
-    // 이모지 제거
-    text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
+    text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");  // 이모지 제거
+    text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");            // 날짜 제거
 
-    // 네이버 자동 문구 제거
     text = text
-      .replace(/^\d{4}\.\s?\d{1,2}\.\s?\d{1,2}\.\s?\d{1,2}:\d{2}$/gm, "") // 날짜/시간
-      .replace(/URL\s*복사/gm, "")
-      .replace(/이웃추가/gm, "")
-      .replace(/본문\s*기타\s*기능/gm, "")
-      .replace(/공유하기/gm, "")
-      .replace(/신고하기/gm, "");
+      .replace(/URL\s*복사/g, "")
+      .replace(/이웃추가/g, "")
+      .replace(/본문\s*기타\s*기능/g, "")
+      .replace(/공유하기/g, "")
+      .replace(/신고하기/g, "");
 
-    // 광고 문구 제거
     text = text
       .replace(/^\s*\[?\s*광고\s*\]?\s*$/gmi, "")
-      .replace(/AD\s*$/gmi, "")
-      .replace(/^AD\.?/gmi, "")
       .replace(/스폰서드/gmi, "")
-      .replace(/Sponsored/gmi, "")
       .replace(/네이버\s*광고/gmi, "")
       .replace(/쇼핑\s*광고/gmi, "")
-      .replace(/파워\s*링크/gmi, "")
-      .replace(/배너\s*광고/gmi, "")
-      .replace(/광고\s*포함/gmi, "");
+      .replace(/AD\s*$/gmi, "")
+      .replace(/^AD\b/gmi, "");
 
-    // 줄/공백 기본 정리
     text = text
       .replace(/\r\n/g, "\n")
-      .replace(/\s+\n/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n");
 
-    // 문장부호 정리
-    text = text
-      .replace(/\s+([,\.!?;:~…])/g, "$1")
-      .replace(/([\.!?])(?=[^\s\n])/g, "$1 ")
-      .replace(/([!?\.])\1{2,}/g, "$1$1")
-      .replace(/ {2,}/g, " ");
+    // 태그(#) 제거
+    const lines = text.split("\n").filter(line => {
+      const trimmed = line.trim();
+      const hashCount = (trimmed.match(/#/g) || []).length;
 
-    // 문단 자동 정렬
-    const lines = text.split("\n");
-    const paras = [];
-    let buffer = [];
+      if (trimmed.startsWith("#")) return false;
+      if (hashCount >= 2) return false;
 
-    for (const line of lines) {
-      const t = line.trim();
-      if (!t) {
-        if (buffer.length) {
-          paras.push(buffer.join(" "));
-          buffer = [];
-        }
-      } else {
-        buffer.push(t);
-      }
-    }
-    if (buffer.length) paras.push(buffer.join(" "));
+      return trimmed.length > 0;
+    });
 
-    return paras.join("\n\n").trim();
+    return lines.join("\n\n").trim();
   }
-
-  const clean = (el) => {
-    if (!el) return "";
-    let text = el.innerText || "";
-    return normalizeText(text);
-  };
 
   async function extract() {
     let url = urlInput.value.trim();
-    if (!url) {
-      alert("네이버 글 주소를 입력하세요.");
-      return;
-    }
+    if (!url) return alert("네이버 주소 입력해주세요.");
 
     output.value = "";
-    url = normalizeNaverUrl(url);
-    urlInput.value = url;
-
-    setStatus("네이버 HTML 가져오는 중...");
     extractBtn.disabled = true;
+    setStatus("HTML 가져오는 중...");
 
-    let res;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
-
-    try {
-      const queryUrl = WORKER_URL + "?url=" + encodeURIComponent(url);
-      res = await fetch(queryUrl, { signal: controller.signal });
-    } catch (e) {
-      clearTimeout(timer);
-      setStatus("연결 오류 또는 타임아웃", "error");
-      extractBtn.disabled = false;
-      return;
-    }
-    clearTimeout(timer);
-
-    if (!res.ok) {
-      setStatus("Worker 에러: " + res.status, "error");
-      extractBtn.disabled = false;
-      return;
-    }
-
-    const htmlText = await res.text();
-    setStatus("HTML 분석 중...");
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlText, "text/html");
-
-    // HTML 광고 블록 제거 (class에 ad 포함된 div/section/aside)
-    doc.querySelectorAll('div[class*="ad"], section[class*="ad"], aside[class*="ad"]').forEach(el => el.remove());
-
-    let content = "";
-    let type = "";
+    url = normalizeUrl(url);
 
     try {
-      // 1) 새 에디터
-      let el =
-        doc.querySelector(".se-main-container, .se-viewer, .se_viewArea");
-      if (el) {
-        content = clean(el);
-        type = "새 에디터";
+      const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
+      if (!res.ok) throw new Error("Worker 오류");
+
+      const html = await res.text();
+      setStatus("본문 분석 중...");
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+
+      // 광고 블록 제거
+      doc.querySelectorAll('div[class*="ad"], section[class*="ad"], aside[class*="ad"]').forEach(el => el.remove());
+
+      // 본문 후보
+      const selectors = [
+        ".se-main-container", ".se-viewer", ".se_viewArea",
+        "#postViewArea", ".post_view", "._postView",
+        ".article_view", "#tbody", ".ArticleContent"
+      ];
+
+      let content = "";
+      for (const s of selectors) {
+        const el = doc.querySelector(s);
+        if (el) { content = el.innerText.trim(); break; }
       }
 
-      // 2) 구 에디터
       if (!content) {
-        el = doc.querySelector("#postViewArea, .post_view, ._postView");
-        if (el) {
-          content = clean(el);
-          type = "구 에디터";
-        }
+        let longest = "";
+        doc.querySelectorAll("div").forEach(d => {
+          const t = d.innerText.trim();
+          if (t.length > longest.length) longest = t;
+        });
+        content = longest;
       }
 
-      // 3) 카페 패턴
-      if (!content) {
-        el = doc.querySelector(".article_view, #tbody, .ArticleContent");
-        if (el) {
-          content = clean(el);
-          type = "카페";
-        }
-      }
+      const cleaned = normalizeText(content);
+      output.value = cleaned;
 
-      // 4) 백업: div 중 텍스트 가장 긴 것
-      if (!content) {
-        const divs = Array.from(doc.querySelectorAll("div"));
-        let max = "";
-        for (const d of divs) {
-          const t = clean(d);
-          if (t.length > max.length) max = t;
-        }
-        if (max.length > 50) {
-          content = max;
-          type = "추정 본문";
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
+      navigator.clipboard.writeText(cleaned).catch(()=>{});
+      setStatus("본문 추출 완료! (자동 복사됨)", "success");
 
-    if (!content) {
-      setStatus("본문을 찾지 못했습니다.", "error");
-      extractBtn.disabled = false;
-      return;
-    }
-
-    // 제목 없이, 본문만 사용
-    const finalText = content;
-    output.value = finalText;
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(finalText)
-        .then(() => setStatus(`추출 완료! (${type}, 클립보드 복사됨)`, "success"))
-        .catch(() => setStatus(`추출 완료! (${type}, 복사는 실패)`, "success"));
-    } else {
-      setStatus(`추출 완료! (${type}, 자동 복사 미지원 브라우저)`, "success");
+    } catch (err) {
+      console.error(err);
+      setStatus("오류 발생: " + err.message, "error");
     }
 
     extractBtn.disabled = false;
@@ -336,24 +199,33 @@
   extractBtn.addEventListener("click", extract);
 
   copyBtn.addEventListener("click", () => {
-    const text = output.value.trim();
-    if (!text) {
-      alert("복사할 내용이 없습니다.");
-      return;
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => {
-        setStatus("결과를 다시 복사했습니다.", "success");
-      }).catch(() => {
-        setStatus("복사 실패. 직접 선택해서 복사하세요.", "error");
-      });
-    } else {
-      setStatus("브라우저가 자동 복사를 지원하지 않습니다.", "error");
-    }
+    navigator.clipboard.writeText(output.value);
+    setStatus("복사되었습니다!", "success");
   });
 
-  urlInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") extract();
+  // Made by 버튼
+  homeBtn.addEventListener("click", () => {
+    window.open("https://hjkim20089.tistory.com/", "_blank");
+  });
+
+  // 공유 기능
+  shareBtn.addEventListener("click", async () => {
+    const text = output.value.trim();
+    if (!text) return alert("공유할 내용이 없습니다.");
+
+    // Web Share API 지원
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "네이버 글 추출 결과",
+          text: text,
+        });
+      } catch (e) {}
+    } else {
+      // 지원 안 되면 복사로 대체
+      await navigator.clipboard.writeText(text);
+      alert("이 브라우저는 공유 기능을 지원하지 않습니다.\n내용이 클립보드에 복사되었습니다!");
+    }
   });
 </script>
 </body>
