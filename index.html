@@ -117,7 +117,7 @@
 </div>
 
 <script>
-  // 당신의 Cloudflare Worker 주소
+  // Cloudflare Worker 주소
   const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";
 
   const $ = (id) => document.getElementById(id);
@@ -135,8 +135,6 @@
   // 블로그 예쁜주소 → PostView.naver 형식으로 변환
   function normalizeNaverUrl(raw) {
     let url = raw.trim();
-
-    // 공백/엔터 포함된 경우 제거
     url = url.replace(/\s+/g, "");
 
     const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/\?]+)\/(\d+)/i);
@@ -145,7 +143,6 @@
       const logNo  = m[2];
       return `https://blog.naver.com/PostView.naver?blogId=${blogId}&logNo=${logNo}`;
     }
-
     return url;
   }
 
@@ -162,16 +159,15 @@
     const normalizedUrl = normalizeNaverUrl(url);
     if (normalizedUrl !== url) {
       url = normalizedUrl;
-      urlInput.value = normalizedUrl; // 사용자가 눈으로도 변환된 주소 확인 가능
+      urlInput.value = normalizedUrl;
     }
 
     setStatus("네이버 HTML 가져오는 중...", "");
     extractBtn.disabled = true;
 
     let res;
-    // 10초 타임아웃
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
+    const timer = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
 
     try {
       const queryUrl = WORKER_URL + "?url=" + encodeURIComponent(url);
@@ -221,12 +217,52 @@
       el.innerText.replace(/\s+\n/g, "\n").replace(/\n{2,}/g, "\n\n").trim();
 
     let content = "";
+    let type = "";
+
     try {
-      content =
-        clean(doc.querySelector(".se-main-container, .se-viewer, .se_component_wrap.sect_dsc, .se_viewArea")) ||
-        clean(doc.querySelector("#postViewArea, .post_view, ._postView")) ||
-        clean(doc.querySelector(".article_view, #tbody, .ArticleContent")) ||
-        "";
+      // 1) 새 에디터
+      let el =
+        doc.querySelector(".se-main-container, .se-viewer, .se_component_wrap.sect_dsc, .se_viewArea");
+      if (el) {
+        content = clean(el);
+        type = "블로그(새 에디터)";
+      }
+
+      // 2) 구 에디터
+      if (!content) {
+        el = doc.querySelector("#postViewArea, .post_view, ._postView");
+        if (el) {
+          content = clean(el);
+          type = "블로그(구 에디터)";
+        }
+      }
+
+      // 3) 카페 패턴
+      if (!content) {
+        el = doc.querySelector(".article_view, #tbody, .ArticleContent");
+        if (el) {
+          content = clean(el);
+          type = "카페/기타";
+        }
+      }
+
+      // 4) 백업: div 중 텍스트 가장 긴 것
+      if (!content) {
+        const divs = Array.from(doc.querySelectorAll("div"));
+        let maxText = "";
+        let maxLen  = 0;
+        for (const d of divs) {
+          const txt = clean(d);
+          if (txt.length > maxLen) {
+            maxLen = txt.length;
+            maxText = txt;
+          }
+        }
+        if (maxLen > 50) { // 너무 짧은 건 버림
+          content = maxText;
+          type = "추정 본문(div 최대 텍스트)";
+        }
+      }
     } catch (e) {
       console.error(e);
     }
@@ -241,17 +277,12 @@
     const finalText = (title ? `[제목]\n${title}\n\n` : "") + content;
     output.value = finalText;
 
-    // 클립보드는 기다리지 않고 백그라운드로 실행
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(finalText)
-        .then(() => {
-          setStatus("본문 추출 완료! (클립보드에 복사됨)", "success");
-        })
-        .catch(() => {
-          setStatus("본문 추출 완료! (복사는 실패, 직접 복사하세요)", "success");
-        });
+        .then(() => setStatus(`본문 추출 완료! (${type}, 클립보드 복사됨)`, "success"))
+        .catch(() => setStatus(`본문 추출 완료! (${type}, 복사는 실패)`, "success"));
     } else {
-      setStatus("본문 추출 완료! (브라우저가 자동 복사를 지원하지 않습니다)", "success");
+      setStatus(`본문 추출 완료! (${type}, 자동 복사 미지원 브라우저)`, "success");
     }
 
     extractBtn.disabled = false;
