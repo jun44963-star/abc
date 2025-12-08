@@ -52,11 +52,17 @@
       border: none;
       font-weight: 700;
       cursor: pointer;
+      font-size: 0.9rem;
     }
     #extractBtn { background: #22c55e; color: #022c22; }
     #extractBtn:hover { background: #16a34a; }
+
+    #pasteBtn { background: #0f766e; color: #e5e7eb; margin-top: 8px; }
+    #pasteBtn:hover { background: #115e59; }
+
     #copyBtn { background: #1e293b; color: #e5e7eb; margin-top: 8px; }
     #copyBtn:hover { background: #334155; }
+
     .status { font-size: 0.8rem; margin: 8px 0; color: #9ca3af; }
     .success { color: #4ade80 !important; }
     .error { color: #f87171 !important; }
@@ -74,10 +80,13 @@
     placeholder="예: https://blog.naver.com/아이디/글번호"
     onclick="this.value='';"
   />
-  <p class="hint">※ 복사한 주소가 있을 때, 위 입력창을 <b>더블클릭</b>하면 붙여넣기가 됩니다. (환경에 따라 동작하지 않을 수 있습니다)</p>
+  <p class="hint">
+    ※ 주소를 복사한 뒤 <b>붙여넣기 버튼</b>을 누르거나, 입력창을 클릭 후 <b>Ctrl+V</b>를 눌러주세요.
+  </p>
 
   <button id="extractBtn">본문 추출하기</button>
-  <button id="copyBtn">복사하기</button>
+  <button id="pasteBtn">Ctrl+V 붙여넣기</button>
+  <button id="copyBtn">본문 복사하기</button>
 
   <div id="status" class="status"></div>
 
@@ -89,11 +98,12 @@
   const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";
 
   const $ = (id) => document.getElementById(id);
-  const urlInput = $("urlInput");
+  const urlInput   = $("urlInput");
   const extractBtn = $("extractBtn");
-  const copyBtn = $("copyBtn");
-  const output = $("output");
-  const status = $("status");
+  const pasteBtn   = $("pasteBtn");
+  const copyBtn    = $("copyBtn");
+  const output     = $("output");
+  const status     = $("status");
 
   function setStatus(msg, type="") {
     status.textContent = msg ?? "";
@@ -177,7 +187,7 @@
 
     output.value = "";
     extractBtn.disabled = true;
-    setStatus("HTML 가져오는 중...");
+    setStatus("HTML 가져오는 중...", "");
 
     url = normalizeUrl(url);
 
@@ -186,7 +196,7 @@
       if (!res.ok) throw new Error("Worker 오류");
 
       const html = await res.text();
-      setStatus("본문 분석 중...");
+      setStatus("본문 분석 중...", "");
 
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
@@ -248,11 +258,29 @@
 
   extractBtn.addEventListener("click", extract);
 
+  // ⭐ Ctrl+V 붙여넣기 버튼: 가능하면 자동 붙여넣기, 안 되면 포커스만 맞추고 안내
+  pasteBtn.addEventListener("click", async () => {
+    urlInput.focus();
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        urlInput.value = text.trim();
+        setStatus("클립보드 주소를 붙여넣었습니다.", "success");
+      } else {
+        setStatus("클립보드에 텍스트가 없습니다. Ctrl+V로 직접 붙여넣기 해주세요.", "error");
+      }
+    } catch (e) {
+      // 브라우저가 readText()를 막은 경우
+      setStatus("브라우저에서 자동 붙여넣기를 막았습니다. Ctrl+V로 직접 붙여넣어 주세요.", "error");
+    }
+  });
+
+  // 본문 복사 버튼
   copyBtn.addEventListener("click", () => {
     const text = output.value.trim();
     if (!text) return alert("복사할 내용이 없습니다.");
     navigator.clipboard.writeText(text);
-    setStatus("다시 복사되었습니다!", "success");
+    setStatus("본문이 복사되었습니다!", "success");
   });
 
   urlInput.addEventListener("keydown", e => {
