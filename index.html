@@ -24,14 +24,28 @@
     h1 { margin: 0 0 10px; font-size: 1.4rem; }
     label { font-size: 0.9rem; color: #9ca3af; }
     input, textarea {
-      width: 100%; margin: 6px 0 14px; padding: 12px;
-      background: #0f172a; border: 1px solid #1f2937;
-      color: #e5e7eb; border-radius: 10px;
+      width: 100%;
+      margin: 6px 0 14px;
+      padding: 12px;
+      background: #0f172a;
+      border: 1px solid #1f2937;
+      color: #e5e7eb;
+      border-radius: 10px;
+      box-sizing: border-box;
     }
-    textarea { min-height: 230px; white-space: pre-wrap; }
+    /* 추출 결과 안쪽 여백 줄이기 */
+    textarea {
+      min-height: 230px;
+      white-space: pre-wrap;
+      padding: 4px;
+    }
     button {
-      width: 100%; padding: 12px; border-radius: 999px;
-      border: none; font-weight: 700; cursor: pointer;
+      width: 100%;
+      padding: 12px;
+      border-radius: 999px;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
     }
     #extractBtn { background: #22c55e; color: #022c22; }
     #extractBtn:hover { background: #16a34a; }
@@ -135,18 +149,17 @@
 
     for (let line of lines) {
       line = line.trim();
-
       if (!line) continue;
 
       const hashCount = (line.match(/#/g) || []).length;
-
-      // 🔥 태그 줄 제거
+      // 태그 줄 제거
       if (hashCount >= 2 || /^#/.test(line)) continue;
 
       filtered.push(line);
     }
 
-    return filtered.join("\n\n").trim();
+    // 🔥 문단 사이 빈 줄 없애기: "\n\n" 대신 "\n"
+    return filtered.join("\n").trim();
   }
 
   async function extract() {
