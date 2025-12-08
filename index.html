@@ -23,6 +23,13 @@
     }
     h1 { margin: 0 0 10px; font-size: 1.4rem; }
     label { font-size: 0.9rem; color: #9ca3af; }
+
+    .hint {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin: -8px 0 10px;
+    }
+
     input, textarea {
       width: 100%;
       margin: 6px 0 14px;
@@ -67,6 +74,7 @@
     placeholder="예: https://blog.naver.com/아이디/글번호"
     onclick="this.value='';"
   />
+  <p class="hint">※ 복사한 주소가 있을 때, 위 입력창을 <b>더블클릭</b>하면 붙여넣기가 됩니다. (환경에 따라 동작하지 않을 수 있습니다)</p>
 
   <button id="extractBtn">본문 추출하기</button>
   <button id="copyBtn">복사하기</button>
@@ -92,22 +100,6 @@
     status.className = "status " + type;
   }
 
-  // ⭐⭐⭐ 주소창 더블클릭 → 클립보드 자동 붙여넣기 ⭐⭐⭐
-  urlInput.addEventListener("dblclick", async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text.trim()) {
-        urlInput.value = text.trim();
-        setStatus("클립보드 주소 자동입력 완료!", "success");
-      } else {
-        setStatus("클립보드에 텍스트가 없습니다.", "error");
-      }
-    } catch (e) {
-      setStatus("클립보드 접근이 차단되었습니다.", "error");
-    }
-  });
-
-
   // /아이디/글번호 → PostView.naver 자동 변환
   function normalizeUrl(url) {
     url = url.trim();
@@ -118,17 +110,25 @@
     return url;
   }
 
-  // 텍스트 정리 로직
+  // 텍스트 정리 로직 (이모지 제거 + 날짜 제거 + 태그 제거 + 광고 제거)
   function normalizeText(text) {
     if (!text) return "";
+
+    // 이모지 제거
     text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
+
+    // 날짜/시간 라인 제거 (2025. 12. 4. 15:14 등 모든 변형 제거)
     text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");
+
+    // 네이버 노이즈 제거
     text = text
       .replace(/URL\s*복사/g, "")
       .replace(/이웃추가/g, "")
       .replace(/본문\s*기타\s*기능/g, "")
       .replace(/공유하기/g, "")
       .replace(/신고하기/g, "");
+
+    // 광고 문구 제거
     text = text
       .replace(/^\s*\[?\s*광고\s*\]?\s*$/gmi, "")
       .replace(/스폰서드/gmi, "")
@@ -136,16 +136,36 @@
       .replace(/쇼핑\s*광고/gmi, "")
       .replace(/AD\s*$/gmi, "")
       .replace(/^AD\b/gmi, "");
-    text = text.replace(/\r\n/g, "\n").replace(/[ \t]+\n/g, "\n").trim();
+
+    // 줄/공백 정리
+    text = text
+      .replace(/\r\n/g, "\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    // 문장부호 정리
+    text = text
+      .replace(/\s+([,\.!?;:~…])/g, "$1")
+      .replace(/([\.!?])(?=[^\s\n])/g, "$1 ")
+      .replace(/([!?\.])\1{2,}/g, "$1$1");
+
+    // 줄 단위로 나누고, 태그 줄 제거
     const lines = text.split("\n");
     const filtered = [];
+
     for (let line of lines) {
       line = line.trim();
       if (!line) continue;
+
       const hashCount = (line.match(/#/g) || []).length;
+      // 태그 줄 제거
       if (hashCount >= 2 || /^#/.test(line)) continue;
+
       filtered.push(line);
     }
+
+    // 줄들을 이어붙이고, 공백 1칸만 유지
     let merged = filtered.join(" ");
     merged = merged.replace(/\s+/g, " ");
     return merged.trim();
@@ -171,8 +191,10 @@
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
 
+      // 광고 블록 제거
       doc.querySelectorAll('div[class*="ad"], section[class*="ad"], aside[class*="ad"]').forEach(el => el.remove());
 
+      // 본문 후보 영역
       const selectors = [
         ".se-main-container",
         ".se-viewer",
@@ -194,6 +216,7 @@
         }
       }
 
+      // 백업: div 중 가장 긴 텍스트
       if (!content) {
         let longest = "";
         doc.querySelectorAll("div").forEach(d => {
