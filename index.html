@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <style>
-    /* ---------------------- 기본 UI ------------------------ */
     body {
       margin: 0; padding: 20px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -19,7 +18,6 @@
       box-shadow: 0 20px 40px rgba(0,0,0,0.6);
     }
     h1 { margin: 0 0 12px; font-size: 1.4rem; }
-
     input, textarea {
       width: 100%; padding: 12px; border-radius: 10px;
       background: #0f172a; border: 1px solid #1f2937; color: #e5e7eb;
@@ -31,18 +29,16 @@
       width: 100%; padding: 12px; border-radius: 999px;
       border: none; font-weight: 700; cursor: pointer;
     }
-
     #extractBtn { background: #22c55e; color: #022c22; }
     #extractBtn:hover { background: #16a34a; }
-
-    #copyBtn { background: #1e293b; color: #e5e7eb; margin-top: 10px; }
+    #copyBtn { background: #1e293b; color: #e5e7eb; }
     #copyBtn:hover { background: #334155; }
 
     .status { font-size: 0.8rem; margin: 8px 0; color: #9ca3af; }
     .success { color: #4ade80 !important; }
     .error { color: #f87171 !important; }
 
-    /* -------------------- Glassmorphism 버튼 -------------------- */
+    /* Glassmorphism Made by 버튼 */
     .floating-buttons {
       position: fixed;
       right: 16px;
@@ -52,7 +48,6 @@
       gap: 10px;
       z-index: 9999;
     }
-
     .glass-btn {
       padding: 10px 16px;
       font-size: 0.75rem;
@@ -67,7 +62,6 @@
       transition: 0.25s ease;
       box-shadow: 0 4px 20px rgba(0,0,0,0.25);
     }
-
     .glass-btn:hover {
       background: rgba(255,255,255,0.22);
       opacity: 1;
@@ -76,8 +70,6 @@
     }
   </style>
 </head>
-
-
 
 <body>
 <div class="wrapper">
@@ -100,14 +92,9 @@
   <textarea id="output"></textarea>
 </div>
 
-
-<!-- Glassmorphism Floating Buttons -->
 <div class="floating-buttons">
-  <button id="shareBtn" class="glass-btn">공유</button>
   <button id="homeBtn" class="glass-btn">Made by</button>
 </div>
-
-
 
 <script>
   const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";
@@ -116,7 +103,6 @@
   const urlInput = $("urlInput");
   const extractBtn = $("extractBtn");
   const copyBtn = $("copyBtn");
-  const shareBtn = $("shareBtn");
   const homeBtn = $("homeBtn");
   const output = $("output");
   const status = $("status");
@@ -126,7 +112,6 @@
     status.className = "status " + type;
   }
 
-  // /아이디/글번호 → PostView.naver 변환
   function normalizeUrl(url) {
     url = url.trim();
     const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
@@ -134,18 +119,12 @@
     return url;
   }
 
-
-  /* ---------------------- 본문 정리 ---------------------- */
+  /* ---------------------- 본문 정리 (빈칸 완전 제거 버전) ---------------------- */
   function normalizeText(text) {
     if (!text) return "";
 
-    // 이모지 제거
-    text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
-
-    // 날짜 제거
-    text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");
-
-    // 네이버 노이즈 제거
+    text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");   // 이모지 제거
+    text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");            // 날짜 제거
     text = text
       .replace(/URL\s*복사/g, "")
       .replace(/이웃추가/g, "")
@@ -153,7 +132,6 @@
       .replace(/공유하기/g, "")
       .replace(/신고하기/g, "");
 
-    // 광고 제거
     text = text
       .replace(/^\s*\[?\s*광고\s*\]?\s*$/gmi, "")
       .replace(/스폰서드/gmi, "")
@@ -163,17 +141,29 @@
       .replace(/^AD\b/gmi, "");
 
     // 해시태그 제거
-    const lines = text.split("\n").filter(line => {
-      const t = line.trim();
-      const count = (t.match(/#/g) || []).length;
-      if (t.startsWith("#")) return false;
-      if (count >= 2) return false;
-      return t.length > 0;
-    });
+    text = text
+      .split("\n")
+      .filter(line => {
+        const t = line.trim();
+        const count = (t.match(/#/g) || []).length;
+        if (t.startsWith("#")) return false;
+        if (count >= 2) return false;
+        return true;
+      })
+      .join("\n");
 
-    return lines.join("\n\n").trim();
+    // 줄바꿈 정리
+    text = text.replace(/\r\n/g, "\n").replace(/\n{2,}/g, "\n");
+
+    // 문장 분리
+    let sentences = text.split(/(?<=[\.!?])\s+/);
+
+    // 문장 기반 문단 → 빈칸 없이 한 줄씩만 출력
+    sentences = sentences.map(s => s.trim()).filter(s => s.length > 0);
+
+    // 빈칸 없이 한 줄씩
+    return sentences.join("\n");
   }
-
 
   /* ---------------------- 본문 추출 ---------------------- */
   async function extract() {
@@ -196,10 +186,8 @@
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
 
-      // 광고 블록 제거
       doc.querySelectorAll('div[class*="ad"], section[class*="ad"], aside[class*="ad"]').forEach(el => el.remove());
 
-      // 본문 후보
       const selectors = [
         ".se-main-container", ".se-viewer", ".se_viewArea",
         "#postViewArea", ".post_view", "._postView",
@@ -212,7 +200,6 @@
         if (el) { content = el.innerText.trim(); break; }
       }
 
-      // 백업: 가장 텍스트 긴 div
       if (!content) {
         let longest = "";
         doc.querySelectorAll("div").forEach(d => {
@@ -230,7 +217,6 @@
 
     } catch (err) {
       setStatus("오류 발생: " + err.message, "error");
-      console.error(err);
     }
 
     extractBtn.disabled = false;
@@ -239,31 +225,14 @@
   extractBtn.addEventListener("click", extract);
 
   copyBtn.addEventListener("click", () => {
-    navigator.clipboard.writeText(output.value);
+    const text = output.value;
+    if (!text.trim()) return alert("복사할 내용이 없습니다.");
+    navigator.clipboard.writeText(text);
     setStatus("복사되었습니다!", "success");
   });
 
-  /* ---------------------- Made by ---------------------- */
   homeBtn.addEventListener("click", () => {
     window.open("https://hjkim20089.tistory.com/", "_blank");
-  });
-
-  /* ---------------------- 공유 기능 ---------------------- */
-  shareBtn.addEventListener("click", async () => {
-    const text = output.value.trim();
-    if (!text) return alert("공유할 내용이 없습니다.");
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "네이버 글 자동 추출 결과",
-          text: text,
-        });
-      } catch(e){}
-    } else {
-      await navigator.clipboard.writeText(text);
-      alert("공유 미지원 브라우저이므로 복사되었습니다.");
-    }
   });
 
   urlInput.addEventListener("keydown", e => {
