@@ -101,7 +101,8 @@
   <p style="font-size:0.9rem; line-height:1.6; margin-bottom:12px;">
     네이버 블로그/카페 글 주소(URL)만 넣으면,<br />
     Worker가 네이버 HTML을 가져오고, 이 페이지가 본문만 추출하여 표시합니다.<br>
-    <small>※ 블로그 주소 <code>/아이디/글번호</code> 형식은 자동으로 <code>PostView.naver</code> 주소로 변환합니다.</small>
+    <small>※ 블로그 주소 <code>/아이디/글번호</code> 형식은 자동으로 <code>PostView.naver</code> 주소로 변환합니다.<br>
+    ※ 이모티콘/이모지 제거 + 문장부호 정리 + 문단 자동정렬 적용.</small>
   </p>
 
   <label for="urlInput">네이버 글 주소</label>
@@ -121,11 +122,11 @@
   const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";
 
   const $ = (id) => document.getElementById(id);
-  const urlInput = $("urlInput");
+  const urlInput   = $("urlInput");
   const extractBtn = $("extractBtn");
-  const copyBtn   = $("copyBtn");
-  const output    = $("output");
-  const status    = $("status");
+  const copyBtn    = $("copyBtn");
+  const output     = $("output");
+  const status     = $("status");
 
   function setStatus(msg, type = "") {
     status.textContent = msg || "";
@@ -144,6 +145,58 @@
       return `https://blog.naver.com/PostView.naver?blogId=${blogId}&logNo=${logNo}`;
     }
     return url;
+  }
+
+  // 이모지/이모티콘 제거 + 문장부호 정리 + 문단 자동 정렬
+  function normalizeText(raw) {
+    let text = raw || "";
+
+    // 1) 이모지 제거 (대부분 범위 커버)
+    text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
+
+    // 2) 양끝 공백/탭 정리
+    text = text.replace(/\r\n/g, "\n");
+    text = text.replace(/[ \t]+\n/g, "\n");
+    text = text.replace(/\n[ \t]+/g, "\n");
+    text = text.trim();
+
+    // 3) 문장부호 주변 공백 정리
+    //   - 마침표/물음표/느낌표/쉼표/콜론 앞 공백 제거
+    text = text.replace(/\s+([,\.!?;:~…])/g, "$1");
+    //   - 마침표/물음표/느낌표 뒤에 공백 하나 강제 (줄바꿈/끝/공백 제외)
+    text = text.replace(/([\.!?])(?=[^\s\n])/g, "$1 ");
+
+    // 4) 중복 문장부호 정리 (!!! → !!, ??? → ?? 정도로만)
+    text = text.replace(/([!?\.])\1{2,}/g, "$1$1");
+
+    // 5) 문장 사이 쓸데 없는 공백 정리
+    text = text.replace(/ {2,}/g, " ");
+
+    // 6) 문단 자동정렬: 한 문단은 한 줄로, 문단 사이엔 빈 줄 하나
+    const lines = text.split("\n");
+    const paras = [];
+    let buffer = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        // 비어있는 줄 → 문단 끝
+        if (buffer.length) {
+          paras.push(buffer.join(" "));
+          buffer = [];
+        }
+      } else {
+        buffer.push(trimmed);
+      }
+    }
+    if (buffer.length) {
+      paras.push(buffer.join(" "));
+    }
+
+    // 빈 줄 두 줄씩 사이에 넣기
+    text = paras.join("\n\n");
+
+    return text.trim();
   }
 
   async function extract() {
@@ -213,8 +266,18 @@
       return;
     }
 
-    const clean = (el) =>
-      el.innerText.replace(/\s+\n/g, "\n").replace(/\n{2,}/g, "\n\n").trim();
+    const clean = (el) => {
+      if (!el) return "";
+      let text = el.innerText || "";
+      // 기본 줄/공백 정리
+      text = text
+        .replace(/\r\n/g, "\n")
+        .replace(/\s+\n/g, "\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+      // 고급 정리 (이모지 제거 + 문장부호 + 문단)
+      return normalizeText(text);
+    };
 
     let content = "";
     let type = "";
@@ -258,7 +321,7 @@
             maxText = txt;
           }
         }
-        if (maxLen > 50) { // 너무 짧은 건 버림
+        if (maxLen > 50) {
           content = maxText;
           type = "추정 본문(div 최대 텍스트)";
         }
@@ -273,7 +336,12 @@
       return;
     }
 
-    const title = (doc.querySelector("title")?.innerText || "").trim();
+    // 제목도 약간 정리 (이모지 제거 + 공백 정리 정도)
+    let title = (doc.querySelector("title")?.innerText || "").trim();
+    if (title) {
+      title = normalizeText(title);
+    }
+
     const finalText = (title ? `[제목]\n${title}\n\n` : "") + content;
     output.value = finalText;
 
