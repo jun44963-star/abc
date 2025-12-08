@@ -33,7 +33,6 @@
       border-radius: 10px;
       box-sizing: border-box;
     }
-    /* 추출 결과 안쪽 여백 줄이기 */
     textarea {
       min-height: 230px;
       white-space: pre-wrap;
@@ -143,7 +142,7 @@
       .replace(/([\.!?])(?=[^\s\n])/g, "$1 ")
       .replace(/([!?\.])\1{2,}/g, "$1$1");
 
-    // 문단 정리 + 태그(#) 제거
+    // 줄 단위로 나누고, 태그 줄 제거
     const lines = text.split("\n");
     const filtered = [];
 
@@ -158,8 +157,15 @@
       filtered.push(line);
     }
 
-    // 🔥 문단 사이 빈 줄 없애기: "\n\n" 대신 "\n"
-    return filtered.join("\n").trim();
+    // 🔥 띄어쓰기 없이 "줄"은 이어붙이고, 문장 사이 공백만 1칸 유지
+    // 1) 줄들을 공백 하나로 이어붙임
+    let merged = filtered.join(" ");
+
+    // 2) 여러 칸 공백 → 한 칸으로 압축
+    merged = merged.replace(/\s+/g, " ");
+
+    // 3) 앞뒤 공백 제거 후 반환 (줄바꿈 없음)
+    return merged.trim();
   }
 
   async function extract() {
