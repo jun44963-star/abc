@@ -100,11 +100,12 @@
 
   <p style="font-size:0.9rem; line-height:1.6; margin-bottom:12px;">
     네이버 블로그/카페 글 주소(URL)만 넣으면,<br />
-    Worker가 네이버 HTML을 가져오고, 이 페이지가 본문만 추출하여 표시합니다.
+    Worker가 네이버 HTML을 가져오고, 이 페이지가 본문만 추출하여 표시합니다.<br>
+    <small>※ 블로그 주소 <code>/아이디/글번호</code> 형식은 자동으로 <code>PostView.naver</code> 주소로 변환합니다.</small>
   </p>
 
   <label for="urlInput">네이버 글 주소</label>
-  <input id="urlInput" type="text" placeholder="예: https://blog.naver.com/..."/>
+  <input id="urlInput" type="text" placeholder="예: https://blog.naver.com/bbangsuni9595/224098457186"/>
 
   <button id="extractBtn">본문 추출하기</button>
   <button id="copyBtn" class="secondary">복사하기</button>
@@ -131,21 +132,46 @@
     status.className = "status" + (type ? " " + type : "");
   }
 
+  // 블로그 예쁜주소 → PostView.naver 형식으로 변환
+  function normalizeNaverUrl(raw) {
+    let url = raw.trim();
+
+    // 공백/엔터 포함된 경우 제거
+    url = url.replace(/\s+/g, "");
+
+    const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/\?]+)\/(\d+)/i);
+    if (m) {
+      const blogId = m[1];
+      const logNo  = m[2];
+      return `https://blog.naver.com/PostView.naver?blogId=${blogId}&logNo=${logNo}`;
+    }
+
+    return url;
+  }
+
   async function extract() {
-    const url = urlInput.value.trim();
+    let url = urlInput.value.trim();
     if (!url) {
       alert("네이버 글 주소를 입력하세요.");
       return;
     }
 
     output.value = "";
+
+    // 주소 정규화
+    const normalizedUrl = normalizeNaverUrl(url);
+    if (normalizedUrl !== url) {
+      url = normalizedUrl;
+      urlInput.value = normalizedUrl; // 사용자가 눈으로도 변환된 주소 확인 가능
+    }
+
     setStatus("네이버 HTML 가져오는 중...", "");
     extractBtn.disabled = true;
 
     let res;
-    // 15초 타임아웃
+    // 10초 타임아웃
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
+    const timer = setTimeout(() => controller.abort(), 10000);
 
     try {
       const queryUrl = WORKER_URL + "?url=" + encodeURIComponent(url);
