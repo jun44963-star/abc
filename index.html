@@ -13,97 +13,63 @@
       color: #e5e7eb;
     }
     .wrapper {
-      max-width: 760px;
+      max-width: 720px;
       margin: 0 auto;
       background: #020617;
-      padding: 24px 20px 28px;
+      padding: 24px 20px;
       border-radius: 16px;
       border: 1px solid #1f2937;
       box-shadow: 0 20px 40px rgba(0,0,0,0.6);
     }
-    h1 {
-      margin: 0 0 10px;
-      font-size: 1.4rem;
-    }
-    h2 {
-      margin: 18px 0 6px;
-      font-size: 1rem;
-      color: #e5e7eb;
-    }
-    label {
-      font-size: 0.9rem;
-      color: #9ca3af;
-      display: block;
-      margin-top: 12px;
-    }
+    h1 { margin: 0 0 10px; font-size: 1.4rem; }
+    label { font-size: 0.9rem; color: #9ca3af; display:block; margin-top: 12px;}
     input, textarea {
       width: 100%;
-      margin: 6px 0 10px;
-      padding: 10px 12px;
+      margin: 6px 0 14px;
+      padding: 12px;
       background: #0f172a;
       border: 1px solid #1f2937;
       color: #e5e7eb;
       border-radius: 10px;
       box-sizing: border-box;
-      font-size: 0.9rem;
     }
     textarea {
+      min-height: 230px;
       white-space: pre-wrap;
-      line-height: 1.5;
+      padding: 8px;
     }
     button {
       width: 100%;
-      padding: 11px 14px;
+      padding: 12px;
       border-radius: 999px;
       border: none;
       font-weight: 700;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
     #pasteBtn {
-      background: #0f172a;
+      background: #1d4ed8;
       color: #e5e7eb;
       margin-bottom: 6px;
     }
-    #pasteBtn:hover { background: #1e293b; }
-    #extractBtn {
-      background: #22c55e;
-      color: #022c22;
-    }
+    #pasteBtn:hover { background: #1e40af; }
+
+    #extractBtn { background: #22c55e; color: #022c22; margin-top: 4px;}
     #extractBtn:hover { background: #16a34a; }
-    #copyBtn {
-      background: #1e293b;
-      color: #e5e7eb;
-      margin-top: 8px;
-    }
+
+    #copyBtn { background: #1e293b; color: #e5e7eb; margin-top: 8px; }
     #copyBtn:hover { background: #334155; }
 
-    #extractFromHtmlBtn {
-      background: #3b82f6;
-      color: #eff6ff;
-      margin-top: 4px;
-    }
-    #extractFromHtmlBtn:hover { background: #2563eb; }
-
-    .status {
-      font-size: 0.8rem;
-      margin: 8px 0;
-      color: #9ca3af;
-      white-space: pre-line;
-    }
-    .status.success { color: #4ade80 !important; }
-    .status.error { color: #f87171 !important; }
+    .status { font-size: 0.8rem; margin: 8px 0; color: #9ca3af; }
+    .success { color: #4ade80 !important; }
+    .error { color: #f87171 !important; }
     .hint {
-      font-size: 0.8rem;
-      color: #6b7280;
-      margin-top: -4px;
-      margin-bottom: 6px;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      margin-bottom: 4px;
+      line-height: 1.4;
     }
-    .section-box {
-      border-top: 1px solid #111827;
-      margin-top: 16px;
-      padding-top: 14px;
-    }
+    .hint b { color: #e5e7eb; }
   </style>
 </head>
 
@@ -111,115 +77,65 @@
 <div class="wrapper">
   <h1>네이버 글 자동 추출기</h1>
 
-  <!-- 🔹 1. URL 모드 (Cloudflare Worker 사용) -->
-  <h2>① URL로 바로 추출 (Worker 사용)</h2>
   <label>네이버 글 주소</label>
   <div class="hint">
-    📌 네이버 글 주소를 복사한 뒤, 아래 <b>[Ctrl+V로 붙여넣기]</b> 버튼을 누르면<br>
-    주소가 자동으로 들어가고, 바로 본문 추출이 시작됩니다.<br>
-    (블로그 / 카페 ArticleRead.nhn / ca-fe / 모바일 보기 시도)
+    📌 주소창에서 <b>URL 복사 → 아래 입력창 더블클릭 또는 Ctrl+V 버튼 → 자동 추출</b>
   </div>
   <input
     id="urlInput"
     type="text"
-    placeholder="예: https://blog.naver.com/아이디/글번호 또는 https://cafe.naver.com/ArticleRead.nhn?..."
+    placeholder="예: https://blog.naver.com/아이디/글번호 혹은 네이버 카페 글 주소"
   />
 
-  <button id="pasteBtn">Ctrl+V로 붙여넣기 + 자동 추출</button>
+  <button id="pasteBtn">Ctrl + V (클립보드 주소 붙여넣기)</button>
   <button id="extractBtn">본문 추출하기</button>
+  <button id="copyBtn">복사하기</button>
 
   <div id="status" class="status"></div>
 
-  <!-- 🔹 2. HTML 붙여넣기 모드 (워커 안 될 때 대안) -->
-  <div class="section-box">
-    <h2>② HTML 전체 붙여넣기 (워커 안 될 때용)</h2>
-    <div class="hint">
-      ⚠ Worker에서 <b>Failed to fetch</b>가 계속 뜨면 이렇게 사용하세요.<br>
-      1) 네이버 글 페이지에서 키보드 <b>Ctrl+U</b> (페이지 소스 보기)<br>
-      2) 전체 선택(<b>Ctrl+A</b>) → 복사(<b>Ctrl+C</b>)<br>
-      3) 아래 칸에 붙여넣기(<b>Ctrl+V</b>) 하면 자동으로 분석 시작
-    </div>
-    <textarea id="htmlInput" placeholder="여기에 페이지 HTML 전체를 붙여넣으면, 본문만 추출합니다." rows="7"></textarea>
-    <button id="extractFromHtmlBtn">HTML에서 본문 추출하기</button>
-  </div>
-
-  <!-- 🔹 결과 영역 -->
-  <div class="section-box">
-    <label>추출된 본문</label>
-    <textarea id="output" placeholder="본문이 여기에 표시됩니다." rows="8"></textarea>
-    <button id="copyBtn">추출 결과 복사하기</button>
-  </div>
+  <label>추출된 본문</label>
+  <textarea id="output" placeholder="여기에 정리된 본문이 나옵니다."></textarea>
 </div>
 
 <script>
-  // ✅ 새 Cloudflare Worker 주소
+  // 🔧 Cloudflare Worker 주소
   const WORKER_URL = "https://summer-sky-c8a4.jun1317.workers.dev/";
 
   const $ = (id) => document.getElementById(id);
   const urlInput = $("urlInput");
-  const pasteBtn = $("pasteBtn");
   const extractBtn = $("extractBtn");
   const copyBtn = $("copyBtn");
+  const pasteBtn = $("pasteBtn");
   const output = $("output");
   const status = $("status");
-  const htmlInput = $("htmlInput");
-  const extractFromHtmlBtn = $("extractFromHtmlBtn");
 
-  function setStatus(msg, type = "") {
+  function setStatus(msg, type="") {
     status.textContent = msg ?? "";
-    status.className = "status " + (type ? type : "");
+    status.className = "status " + type;
   }
 
-  // 네이버 주소 정규화
+  // /아이디/글번호 → PostView.naver 자동 변환 (블로그용)
   function normalizeUrl(url) {
     url = url.trim();
 
-    // 블로그: /아이디/글번호 → PostView.naver
-    let m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
-    if (m) {
-      return "https://blog.naver.com/PostView.naver?blogId=" + m[1] + "&logNo=" + m[2];
+    // 네이버 블로그 기본 형태
+    const blogMatch = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
+    if (blogMatch) {
+      return `https://blog.naver.com/PostView.naver?blogId=${blogMatch[1]}&logNo=${blogMatch[2]}`;
     }
 
-    // 카페 ArticleRead.nhn (PC)
-    if (/cafe\.naver\.com\/ArticleRead\.nhn/i.test(url)) {
-      return url.replace(/^http:\/\//, "https://");
-    }
-
-    // 카페 ArticleRead.nhn (모바일)
-    if (/m\.cafe\.naver\.com\/ArticleRead\.nhn/i.test(url)) {
-      return url.replace(/^http:\/\//, "https://");
-    }
-
-    // 새 ca-fe SPA 주소 → m.cafe ArticleRead.nhn 형태로 변환
-    // 예: https://cafe.naver.com/ca-fe/cafes/20004844/articles/615362
-    m = url.match(/cafe\.naver\.com\/(?:ca-fe\/cafes\/)?(\d+)\/articles\/(\d+)/);
-    if (m) {
-      const clubId = m[1];
-      const articleId = m[2];
-      return "https://m.cafe.naver.com/ArticleRead.nhn?clubid=" + clubId + "&articleid=" + articleId;
-    }
-
+    // 카페 web-pc 주소일 때는 그냥 두고, 내부에서 ArticleRead.nhn 다시 찾기
     return url;
   }
 
-  // web-pc HTML 안에서 ArticleRead.nhn 주소 뽑기
-  function extractCafeArticleUrlFromHtml(html) {
-    // $("cafe_main").src = "//cafe.naver.com/ArticleRead.nhn?articleid=615362&clubid=20004844";
-    const m = html.match(/cafe_main"\)\.src\s*=\s*["']\/\/cafe\.naver\.com\/ArticleRead\.nhn\?([^"']+)/);
-    if (m) {
-      return "https://cafe.naver.com/ArticleRead.nhn?" + m[1];
-    }
-    return null;
-  }
-
-  // 👉 강한 정리(광고/태그/공백 정리) 함수
-  function normalizeStrong(text) {
+  // 이모지/태그/광고/노이즈 제거 + 한 줄로 정리
+  function normalizeText(text) {
     if (!text) return "";
 
     // 이모지 제거
     text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
 
-    // 날짜/시간 라인 제거 (2025. 12. 4. 15:14 등)
+    // 날짜/시간 라인 제거
     text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");
 
     // 네이버 노이즈 제거
@@ -239,13 +155,20 @@
       .replace(/AD\s*$/gmi, "")
       .replace(/^AD\b/gmi, "");
 
+    // 줄/공백 정리
     text = text
       .replace(/\r\n/g, "\n")
       .replace(/[ \t]+\n/g, "\n")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
-    // 문장 부호/공백 정리
+    // 코드/스크립트 티 나는 줄 제거 (cafe js 뭉텅이들)
+    text = text.replace(/^\s*(function|var|let|const)\s+[a-zA-Z0-9_$]+\s*\(/gm, "");
+    text = text.replace(/^\s*\/\/<!\[CDATA\[.*$/gm, "");
+    text = text.replace(/^\s*\/\/\]\]>.*$/gm, "");
+    text = text.replace(/^\s*\<script.*$/gm, "");
+
+    // 문장부호 정리
     text = text
       .replace(/\s+([,\.!?;:~…])/g, "$1")
       .replace(/([\.!?])(?=[^\s\n])/g, "$1 ")
@@ -258,9 +181,12 @@
       line = line.trim();
       if (!line) continue;
 
-      // 태그 줄만 있는 경우 제거
       const hashCount = (line.match(/#/g) || []).length;
-      if (hashCount >= 10) continue; // 해시태그만 잔뜩인 줄일 때만 컷
+      if (hashCount >= 2 || /^#/.test(line)) continue;
+
+      // 너무 스크립트 냄새나는 줄 버리기
+      if (/function\s|\bvar\b|\bAjax\b|\bmenuId\b|\bcafeId\b/.test(line)) continue;
+
       filtered.push(line);
     }
 
@@ -269,271 +195,192 @@
     return merged.trim();
   }
 
-  // 👉 너무 많이 지워졌을 때 쓰는 부드러운 정리 함수
-  function normalizeSoft(text) {
-    if (!text) return "";
-    return text
-      .replace(/\r\n/g, "\n")
-      .replace(/[ \t]+\n/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+  // 카페 web-pc HTML 안에서 실제 ArticleRead.nhn 주소 찾아내기
+  function findCafeArticleUrl(html) {
+    if (!html) return null;
+
+    // 1) iframe id="cafe_main"
+    let m = html.match(/<iframe[^>]+id=["']cafe_main["'][^>]*src=["']([^"']+)["']/i);
+    let url = m && m[1];
+
+    // 2) JS로 cafe_main.src 설정하는 패턴
+    if (!url) {
+      m = html.match(/cafe_main["']\)\s*\.src\s*=\s*["']([^"']+)["']/i);
+      url = m && m[1];
+    }
+
+    // 3) ArticleRead.nhn? ... 문자열로만 있을 때
+    if (!url) {
+      m = html.match(/ArticleRead\.nhn\?[^"' ]+/i);
+      url = m && m[0];
+    }
+
+    if (!url) return null;
+
+    // 절대주소로 변환
+    if (url.startsWith("//")) {
+      url = "https:" + url;
+    } else if (url.startsWith("/")) {
+      url = "https://cafe.naver.com" + url;
+    } else if (!/^https?:\/\//i.test(url)) {
+      url = "https://cafe.naver.com/" + url.replace(/^\//, "");
+    }
+
+    return url;
   }
 
-  // 공통: HTML 문자열 → 본문 텍스트 추출
-  function extractFromHtmlString(html) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
-
-    // 광고 영역 대충 제거
-    doc.querySelectorAll('div[class*="ad"], section[class*="ad"], aside[class*="ad"]').forEach(el => el.remove());
-
-    const selectors = [
-      // 네이버 블로그(새 에디터)
-      ".se-main-container",
-      ".se_viewArea",
-      ".blog2_container",
-      ".blog2_contents",
-      "#postViewArea",
-      ".post_view",
-      "._postView",
-      // 카페/기타
-      ".article_view",
-      "#tbody",
-      ".ArticleContent",
-      "article"
-    ];
-
-    let raw = "";
-    for (const sel of selectors) {
-      const el = doc.querySelector(sel);
-      if (el) {
-        const t = (el.innerText || "").trim();
-        if (t.length > 0) {
-          raw = t;
-          break;
-        }
-      }
-    }
-
-    // 백업: 가장 긴 div 텍스트
-    if (!raw) {
-      let longest = "";
-      doc.querySelectorAll("div").forEach((d) => {
-        const t = (d.innerText || "").trim();
-        if (t.length > longest.length) longest = t;
-      });
-      raw = longest;
-    }
-
-    if (!raw || !raw.trim()) {
-      return "";
-    }
-
-    // 1차: 강하게 정리
-    let cleaned = normalizeStrong(raw);
-
-    // 2차: 너무 짧게 날아간 경우, 부드러운 정리로 대체
-    if (!cleaned || cleaned.length < 30) {
-      cleaned = normalizeSoft(raw);
-    }
-
-    // 그래도 없으면 실패 처리
-    if (!cleaned || !cleaned.trim()) return "";
-
-    return cleaned.trim();
-  }
-
-  async function fetchThroughWorker(targetUrl) {
-    const full =
-      WORKER_URL.replace(/\/+$/, "") + "?url=" + encodeURIComponent(targetUrl);
-    const res = await fetch(full, { method: "GET" });
-
+  async function fetchHtmlViaWorker(target) {
+    const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(target));
     if (!res.ok) {
-      throw new Error("WORKER_HTTP_" + res.status);
+      throw new Error("Worker 오류 (HTTP " + res.status + ")");
     }
     return await res.text();
   }
 
-  // 🔹 URL + Worker 모드 추출
+  function extractContentFromDoc(doc) {
+    const selectors = [
+      // 블로그/에디터
+      ".se-main-container",
+      ".se-viewer",
+      ".se-viewArea",
+      ".se_textView",
+      ".post-view",
+      "#postViewArea",
+      ".post_view",
+      "._postView",
+      ".article_view",
+      ".article_viewer",
+      ".content",
+      ".view",
+      // 카페 ArticleRead 쪽
+      "#tbody",
+      "#articleBody",
+      ".ArticleContent",
+      ".ArticleContentBox",
+      ".ContentRenderer"
+    ];
+
+    let content = "";
+    for (const sel of selectors) {
+      const el = doc.querySelector(sel);
+      if (el && el.innerText && el.innerText.trim().length > 50) {
+        content = el.innerText.trim();
+        break;
+      }
+    }
+
+    // 백업: 가장 긴 div 텍스트
+    if (!content) {
+      let longest = "";
+      doc.querySelectorAll("div").forEach(d => {
+        const t = d.innerText && d.innerText.trim();
+        if (t && t.length > longest.length) longest = t;
+      });
+      content = longest;
+    }
+
+    return content;
+  }
+
   async function extract() {
-    let rawUrl = urlInput.value.trim();
-    if (!rawUrl) {
-      alert("네이버 글 주소를 먼저 입력하거나, 위의 Ctrl+V 버튼을 눌러 붙여넣기 해주세요.");
+    let url = urlInput.value.trim();
+    if (!url) {
+      alert("네이버 주소를 먼저 입력해주세요.");
       return;
     }
 
     output.value = "";
     extractBtn.disabled = true;
-    pasteBtn.disabled = true;
-    setStatus("HTML 가져오는 중... (Cloudflare Worker 요청)", "");
+    setStatus("HTML 가져오는 중...", "");
 
-    let url = normalizeUrl(rawUrl);
+    url = normalizeUrl(url);
 
     try {
-      let html;
-      try {
-        html = await fetchThroughWorker(url);
-      } catch (err) {
-        if (err.name === "TypeError") {
-          setStatus(
-            "Worker에 연결할 수 없습니다. (Failed to fetch)\n\n" +
-            "1) 아래 주소를 브라우저에서 직접 열어보세요.\n" +
-            "   " + WORKER_URL + "?url=https://naver.com\n" +
-            "   → 열리지 않으면 Cloudflare Worker 쪽 문제입니다.\n\n" +
-            "2) Cloudflare 대시보드에서\n" +
-            "   - 워커 도메인 설정\n" +
-            "   - HTTPS / 라우트 / 에러 로그를 확인해주세요.\n\n" +
-            "3) 그동안은 아래 [HTML 전체 붙여넣기] 모드를 사용하시면\n" +
-            "   Worker 없이도 본문 추출이 가능합니다.",
-            "error"
-          );
-          return;
-        } else if (err.message && err.message.startsWith("WORKER_HTTP_")) {
-          const code = err.message.split("_").pop();
-          setStatus(
-            "Worker 응답 오류 (HTTP " + code + ")\n\n" +
-            "- 401/403: 네이버 또는 워커 권한/차단 문제일 수 있습니다.\n" +
-            "- 5xx: Worker 코드 또는 네이버 서버 오류일 수 있습니다.\n" +
-            "Cloudflare 대시보드에서 해당 워커의 로그를 확인해 주세요.",
-            "error"
-          );
-          return;
-        } else {
-          throw err;
-        }
-      }
+      // 1차: 사용자가 입력한 주소로 요청
+      let html = await fetchHtmlViaWorker(url);
 
-      // 카페 web-pc SPA 껍데기면, 내부 ArticleRead.nhn 한 번 더 시도
-      if (
-        /web-pc doesn't work properly without JavaScript enabled/i.test(html) ||
-        /cafe_main"\)\.src\s*=\s*["']\/\/cafe\.naver\.com\/ArticleRead\.nhn\?/i.test(html)
-      ) {
-        setStatus("카페 구버전 ArticleRead.nhn 주소 찾는 중...", "");
-        const cafeUrl = extractCafeArticleUrlFromHtml(html);
-        if (cafeUrl) {
-          setStatus("카페 ArticleRead.nhn 주소를 감지했습니다. 다시 요청 중...", "");
-          html = await fetchThroughWorker(cafeUrl);
-        }
-      }
+      let parser = new DOMParser();
+      let doc = parser.parseFromString(html, "text/html");
+
+      // 광고 블록 제거 (대략)
+      doc.querySelectorAll('div[class*="ad"], section[class*="ad"], aside[class*="ad"]').forEach(el => el.remove());
 
       setStatus("본문 분석 중...", "");
 
-      const cleaned = extractFromHtmlString(html);
+      let content = extractContentFromDoc(doc);
 
-      if (!cleaned) {
+      // 2차: 카페 web-pc 구조면, 내부 ArticleRead.nhn 주소 다시 따라 들어가기
+      if ((!content || content.trim().length < 30) && /cafe\.naver\.com/.test(url)) {
+        const innerUrl = findCafeArticleUrl(html);
+        if (innerUrl) {
+          setStatus("카페 본문 주소 감지, 다시 가져오는 중...", "");
+          const innerHtml = await fetchHtmlViaWorker(innerUrl);
+          const innerDoc = parser.parseFromString(innerHtml, "text/html");
+          content = extractContentFromDoc(innerDoc);
+        }
+      }
+
+      if (!content || !content.trim()) {
         setStatus(
           "본문을 찾지 못했습니다. (비공개/로그인 필요/구조 특이 가능)\n\n" +
           "• 카페라면 '모바일 보기'나 ArticleRead.nhn 주소를 직접 복사해서 넣어보세요.\n" +
-          "• 또는 위에서 페이지 HTML을 통째로 붙여넣는 방법(②)도 이용해보세요.",
+          "• 또는 페이지 HTML을 통째로 복사해서 다른 도구로 붙여넣어 보세요.",
           "error"
         );
+        extractBtn.disabled = false;
         return;
       }
 
+      const cleaned = normalizeText(content);
       output.value = cleaned;
 
       try {
         await navigator.clipboard.writeText(cleaned);
-        setStatus("본문 추출 완료! (클립보드에 자동 복사됨)", "success");
-      } catch {
-        setStatus("본문 추출 완료! (아래 [추출 결과 복사하기] 버튼으로 복사할 수 있습니다.)", "success");
+      } catch(e) {
+        // 클립보드 권한 없으면 그냥 무시
       }
+
+      setStatus("본문 추출 완료! (자동 복사됨)", "success");
+      extractBtn.disabled = false;
 
     } catch (err) {
       console.error(err);
-      setStatus("예상치 못한 오류가 발생했습니다: " + (err.message || err), "error");
-    } finally {
+      setStatus("오류 발생: " + err.message, "error");
       extractBtn.disabled = false;
-      pasteBtn.disabled = false;
     }
   }
 
-  // 🔹 HTML 붙여넣기 모드 추출
-  function extractFromHtmlMode() {
-    const html = htmlInput.value.trim();
-    if (!html) {
-      alert("먼저 네이버 페이지 HTML 전체를 붙여넣어 주세요.\n(페이지에서 Ctrl+U → Ctrl+A → Ctrl+C)");
-      return;
-    }
-    setStatus("붙여넣은 HTML에서 본문 분석 중...", "");
-    const cleaned = extractFromHtmlString(html);
-    if (!cleaned) {
-      setStatus(
-        "붙여넣은 HTML에서 본문을 찾지 못했습니다.\n" +
-        "- 비공개 글이거나, JS로만 렌더링되는 특이 구조일 수 있습니다.",
-        "error"
-      );
-      return;
-    }
-    output.value = cleaned;
-    try {
-      navigator.clipboard.writeText(cleaned);
-      setStatus("본문 추출 완료! (클립보드에 자동 복사됨)", "success");
-    } catch {
-      setStatus("본문 추출 완료! (아래 [추출 결과 복사하기] 버튼으로 복사할 수 있습니다.)", "success");
-    }
-  }
+  extractBtn.addEventListener("click", extract);
 
-  // Ctrl+V 버튼: 클립보드 → 주소창 → 자동 추출
+  copyBtn.addEventListener("click", () => {
+    const text = output.value.trim();
+    if (!text) return alert("복사할 내용이 없습니다.");
+    navigator.clipboard.writeText(text);
+    setStatus("다시 복사되었습니다!", "success");
+  });
+
+  // 주소창에서 Ctrl+V 자동 버튼
   pasteBtn.addEventListener("click", async () => {
     try {
       const text = await navigator.clipboard.readText();
       if (!text) {
-        alert("클립보드에 주소가 없습니다.\n먼저 네이버 글 주소를 복사해주세요.");
+        alert("클립보드에 주소가 없습니다.\n먼저 네이버 주소를 복사해 주세요.");
         return;
       }
       urlInput.value = text.trim();
+      setStatus("주소 붙여넣기 완료 → 본문 자동 추출 중...", "");
       extract();
-    } catch (err) {
-      console.error(err);
-      alert("클립보드에서 읽어올 수 없습니다.\n브라우저 권한을 허용했는지 확인하거나, 직접 Ctrl+V로 붙여넣기 해주세요.");
+    } catch (e) {
+      alert("브라우저에서 클립보드 읽기를 막았습니다.\n직접 Ctrl+V로 붙여넣어 주세요.");
     }
   });
 
-  // 수동 추출 버튼 (URL 모드)
-  extractBtn.addEventListener("click", extract);
-
-  // HTML 모드 추출 버튼
-  extractFromHtmlBtn.addEventListener("click", extractFromHtmlMode);
-
-  // HTML textarea에 붙여넣자마자 자동 분석
-  htmlInput.addEventListener("paste", () => {
-    setTimeout(() => {
-      if (htmlInput.value.trim()) {
-        extractFromHtmlMode();
-      }
-    }, 0);
-  });
-
-  // 결과 복사 버튼
-  copyBtn.addEventListener("click", () => {
-    const text = output.value.trim();
-    if (!text) {
-      alert("복사할 내용이 없습니다.");
-      return;
-    }
-    navigator.clipboard.writeText(text).then(() => {
-      setStatus("추출된 본문이 다시 클립보드로 복사되었습니다!", "success");
-    }).catch(() => {
-      setStatus("복사에 실패했습니다. 직접 드래그해서 복사해주세요.", "error");
-    });
-  });
-
-  // URL 입력창에서 Enter → 추출
-  urlInput.addEventListener("keydown", (e) => {
+  // Enter로도 추출
+  urlInput.addEventListener("keydown", e => {
     if (e.key === "Enter") {
       e.preventDefault();
       extract();
     }
-  });
-
-  // URL 입력창에 붙여넣기(paste) 하자마자 자동 추출
-  urlInput.addEventListener("paste", () => {
-    setTimeout(() => {
-      if (urlInput.value.trim()) {
-        extract();
-      }
-    }, 0);
   });
 </script>
 </body>
