@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>네이버 글 자동 추출기</title>
+  <title>네이버 글·카페 자동 추출기</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -71,20 +71,20 @@
 
 <body>
 <div class="wrapper">
-  <h1>네이버 글 자동 추출기</h1>
+  <h1>네이버 글·카페 자동 추출기</h1>
 
-  <label>네이버 글 주소</label>
+  <label>네이버 블로그 / 카페 글 주소</label>
   <input
     id="urlInput"
     type="text"
-    placeholder="예: https://blog.naver.com/아이디/글번호"
+    placeholder="예: https://blog.naver.com/... 또는 https://cafe.naver.com/..."
     onclick="this.value='';"
   />
   <p class="hint">
-    ※ 주소 복사 후 <b>Ctrl+V 붙여넣기 버튼</b>을 누르거나, 입력창 클릭 후 <b>Ctrl+V</b>를 누르세요.
+    ※ 주소를 복사한 뒤 <b>Ctrl+V 붙여넣기 버튼</b>을 누르거나, 입력창 클릭 후 <b>Ctrl+V</b>를 눌러주세요.
   </p>
 
-  <!-- 🔥 붙여넣기 버튼을 맨 위로 이동 -->
+  <!-- 붙여넣기 버튼 (맨 위) -->
   <button id="pasteBtn">Ctrl+V 붙여넣기</button>
 
   <!-- 본문 추출 -->
@@ -115,7 +115,7 @@
     status.className = "status " + type;
   }
 
-  // ⭐ Ctrl+V 버튼 기능
+  // ⭐ Ctrl+V 버튼 기능: 가능하면 자동 붙여넣기, 안 되면 포커스 + 안내
   pasteBtn.addEventListener("click", async () => {
     urlInput.focus();
     try {
@@ -124,34 +124,46 @@
         urlInput.value = text.trim();
         setStatus("클립보드 주소를 붙여넣었습니다.", "success");
       } else {
-        setStatus("클립보드에 텍스트가 없습니다. Ctrl+V로 직접 붙여넣기 해주세요.", "error");
+        setStatus("클립보드에 텍스트가 없습니다. Ctrl+V로 직접 붙여넣어 주세요.", "error");
       }
     } catch (e) {
       setStatus("브라우저가 자동 붙여넣기를 차단했습니다. Ctrl+V로 직접 붙여넣어 주세요.", "error");
     }
   });
 
-  // 네이버 주소 변환
+  // /아이디/글번호 → PostView.naver 자동 변환 (블로그 전용)
   function normalizeUrl(url) {
     url = url.trim();
-    const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
-    if (m) {
-      return `https://blog.naver.com/PostView.naver?blogId=${m[1]}&logNo=${m[2]}`;
+
+    // 네이버 블로그 예쁜주소 → PostView.naver 로 변환
+    const blog = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
+    if (blog) {
+      return `https://blog.naver.com/PostView.naver?blogId=${blog[1]}&logNo=${blog[2]}`;
     }
+
+    // 네이버 카페는 현재 URL 그대로 사용 (cafe.naver.com/...)
     return url;
   }
 
-  // 텍스트 정리
+  // 텍스트 정리 로직 (이모지/날짜/태그/광고 제거 + 한 줄로)
   function normalizeText(text) {
     if (!text) return "";
+
+    // 이모지 제거
     text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
+
+    // 날짜/시간 라인 제거 (2025. 12. 4. 15:14 등)
     text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");
+
+    // 네이버 공통 노이즈 제거
     text = text
       .replace(/URL\s*복사/g, "")
       .replace(/이웃추가/g, "")
       .replace(/본문\s*기타\s*기능/g, "")
       .replace(/공유하기/g, "")
       .replace(/신고하기/g, "");
+
+    // 광고 문구 제거
     text = text
       .replace(/^\s*\[?\s*광고\s*\]?\s*$/gmi, "")
       .replace(/스폰서드/gmi, "")
@@ -159,16 +171,36 @@
       .replace(/쇼핑\s*광고/gmi, "")
       .replace(/AD\s*$/gmi, "")
       .replace(/^AD\b/gmi, "");
-    text = text.replace(/\r\n/g, "\n").trim();
+
+    // 줄/공백 정리
+    text = text
+      .replace(/\r\n/g, "\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    // 문장부호 정리
+    text = text
+      .replace(/\s+([,\.!?;:~…])/g, "$1")
+      .replace(/([\.!?])(?=[^\s\n])/g, "$1 ")
+      .replace(/([!?\.])\1{2,}/g, "$1$1");
+
+    // 줄 단위로 나누고, 태그 줄 제거
     const lines = text.split("\n");
     const filtered = [];
+
     for (let line of lines) {
       line = line.trim();
       if (!line) continue;
+
       const hashCount = (line.match(/#/g) || []).length;
+      // 태그 줄 제거
       if (hashCount >= 2 || /^#/.test(line)) continue;
+
       filtered.push(line);
     }
+
+    // 줄들을 하나로 이어붙이고, 공백 1칸만 유지
     let merged = filtered.join(" ");
     merged = merged.replace(/\s+/g, " ");
     return merged.trim();
@@ -177,7 +209,7 @@
   // 본문 추출
   async function extract() {
     let url = urlInput.value.trim();
-    if (!url) return alert("네이버 주소 입력해주세요");
+    if (!url) return alert("네이버 블로그/카페 주소를 입력해주세요");
 
     output.value = "";
     extractBtn.disabled = true;
@@ -187,7 +219,7 @@
 
     try {
       const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
-      if (!res.ok) throw new Error("Worker 오류");
+      if (!res.ok) throw new Error("Worker 오류: " + res.status);
 
       const html = await res.text();
       setStatus("본문 분석 중...", "");
@@ -195,9 +227,12 @@
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
 
+      // 광고 블록 제거 (공통)
       doc.querySelectorAll('div[class*="ad"], section[class*="ad"], aside[class*="ad"]').forEach(el => el.remove());
 
+      // 네이버 블로그 + 카페 본문 후보 셀렉터
       const selectors = [
+        // 네이버 블로그
         ".se-main-container",
         ".se-viewer",
         ".se_viewArea",
@@ -206,29 +241,45 @@
         "._postView",
         ".article_view",
         "#tbody",
-        ".ArticleContent"
+        ".ArticleContent",
+
+        // 네이버 카페 대표 컨테이너들
+        ".ArticleContentBox",
+        ".article_content",
+        ".article_viewer",
+        ".ContentRenderer",
+        "#content-area",
+        ".se-module.se-text",
+        ".se-component-content",
+
+        // 공통 fallback
+        "article"
       ];
 
       let content = "";
       for (const sel of selectors) {
         const el = doc.querySelector(sel);
         if (el) {
-          content = el.innerText.trim();
-          break;
+          const text = el.innerText.trim();
+          if (text && text.length > 40) { // 너무 짧은 것은 패스
+            content = text;
+            break;
+          }
         }
       }
 
+      // 백업: div 중 가장 긴 텍스트
       if (!content) {
         let longest = "";
         doc.querySelectorAll("div").forEach(d => {
-          const t = d.innerText.trim();
+          const t = (d.innerText || "").trim();
           if (t.length > longest.length) longest = t;
         });
         content = longest;
       }
 
       if (!content.trim()) {
-        setStatus("본문을 찾지 못했습니다.", "error");
+        setStatus("본문을 찾지 못했습니다. (비공개/로그인 필요/구조 특이)", "error");
         extractBtn.disabled = false;
         return;
       }
