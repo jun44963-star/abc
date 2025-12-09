@@ -2,661 +2,370 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>블로그/카페 글 내용 추출기</title>
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
-  />
+  <title>네이버 글 자동 추출기</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
       margin: 0;
-      padding: 16px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617;
+      color: #e5e7eb;
     }
-    .container {
-      max-width: 960px;
+    .wrapper {
+      max-width: 720px;
       margin: 0 auto;
-    }
-    h1 {
-      font-size: 1.4rem;
-      margin-bottom: 0.5rem;
-    }
-    small {
-      color: #9ca3af;
-    }
-    .card {
       background: #020617;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 10px 40px rgba(15, 23, 42, 0.7);
+      padding: 24px 20px;
+      border-radius: 16px;
       border: 1px solid #1f2937;
-      margin-top: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
     }
-    label {
-      display: block;
-      font-size: 0.9rem;
-      margin-bottom: 4px;
-      color: #e5e7eb;
+    h1 { margin: 0 0 10px; font-size: 1.4rem; }
+    label { font-size: 0.9rem; color: #9ca3af; }
+
+    .hint {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin: -8px 0 10px;
     }
-    input,
-    textarea {
+
+    input, textarea {
       width: 100%;
-      border-radius: 8px;
-      border: 1px solid #374151;
-      padding: 8px 10px;
-      font-size: 0.9rem;
-      box-sizing: border-box;
-      background: #020617;
+      margin: 6px 0 14px;
+      padding: 12px;
+      background: #0f172a;
+      border: 1px solid #1f2937;
       color: #e5e7eb;
+      border-radius: 10px;
+      box-sizing: border-box;
     }
     textarea {
-      min-height: 140px;
-      resize: vertical;
-    }
-    input:focus,
-    textarea:focus {
-      outline: none;
-      border-color: #6366f1;
-      box-shadow: 0 0 0 1px #6366f1;
-    }
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-      align-items: center;
-    }
-    .row > * {
-      flex: 1;
-      min-width: 0;
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 14px;
-      border-radius: 999px;
-      font-size: 0.9rem;
-      border: none;
-      cursor: pointer;
-      white-space: nowrap;
-      user-select: none;
-    }
-    .btn-primary {
-      background: #6366f1;
-      color: #f9fafb;
-    }
-    .btn-outline {
-      background: transparent;
-      color: #e5e7eb;
-      border: 1px solid #4b5563;
-    }
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
-    .status {
-      margin-top: 8px;
-      font-size: 0.8rem;
-      color: #9ca3af;
-      white-space: pre-line;
-    }
-    .status.error {
-      color: #fca5a5;
-    }
-    .status.success {
-      color: #6ee7b7;
-    }
-    .result-box {
-      margin-top: 12px;
-    }
-    .result-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 6px;
-      font-size: 0.85rem;
-      color: #9ca3af;
-    }
-    .result-content {
-      background: #020617;
-      border-radius: 8px;
-      border: 1px solid #1f2937;
-      padding: 10px;
-      min-height: 120px;
+      min-height: 230px;
       white-space: pre-wrap;
-      word-break: break-all;
+      padding: 4px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 999px;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
       font-size: 0.9rem;
     }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid #374151;
-      background: rgba(15, 23, 42, 0.9);
-      font-size: 0.75rem;
-      color: #9ca3af;
-    }
-    code {
-      background: #030712;
-      border-radius: 4px;
-      padding: 1px 4px;
-      font-size: 0.75rem;
-      border: 1px solid #111827;
-    }
-    @media (max-width: 640px) {
-      .row {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .btn {
-        width: 100%;
-      }
-    }
+    #pasteBtn { background: #0f766e; color: #e5e7eb; margin-bottom: 10px; }
+    #pasteBtn:hover { background: #115e59; }
+
+    #extractBtn { background: #22c55e; color: #022c22; margin-bottom: 8px; }
+    #extractBtn:hover { background: #16a34a; }
+
+    #copyBtn { background: #1e293b; color: #e5e7eb; margin-top: 8px; }
+    #copyBtn:hover { background: #334155; }
+
+    .status { font-size: 0.8rem; margin: 8px 0; color: #9ca3af; }
+    .success { color: #4ade80 !important; }
+    .error { color: #f87171 !important; }
+    .warn { color: #facc15 !important; }
   </style>
 </head>
+
 <body>
-  <div class="container">
-    <h1>블로그 / 카페 글 내용 추출기</h1>
-    <small
-      >네이버 블로그, 네이버 카페(ArticleRead 포함) 등에서 <b>본문만</b>
-      뽑아오기</small
-    >
+<div class="wrapper">
+  <h1>네이버 글 자동 추출기</h1>
 
-    <!-- URL 입력 -->
-    <div class="card">
-      <label for="urlInput">① URL 넣고 본문 추출</label>
-      <input
-        id="urlInput"
-        type="text"
-        placeholder="https://blog.naver.com/..., https://cafe.naver.com/..."
-      />
+  <label>네이버 글 주소</label>
+  <input
+    id="urlInput"
+    type="text"
+    placeholder="예: https://blog.naver.com/아이디/글번호"
+    onclick="this.value='';"
+  />
+  <p class="hint">
+    ※ 주소 복사 후 <b>Ctrl+V 붙여넣기 버튼</b>을 누르거나, 입력창 클릭 후 <b>Ctrl+V</b>를 누르세요.
+  </p>
 
-      <div class="row">
-        <button id="btnExtractUrl" class="btn btn-primary">
-          URL로 추출 (Worker 사용)
-        </button>
-        <button id="btnClear" class="btn btn-outline">초기화</button>
-      </div>
+  <!-- 붙여넣기 버튼 -->
+  <button id="pasteBtn">Ctrl+V 붙여넣기</button>
 
-      <div id="statusUrl" class="status"></div>
-    </div>
+  <!-- 본문 추출 -->
+  <button id="extractBtn">본문 추출하기</button>
 
-    <!-- HTML 붙여넣기 -->
-    <div class="card">
-      <label for="htmlInput">
-        ② HTML 전체를 그대로 붙여넣어 추출 (네이버 '원본보기' / 카페 ArticleRead
-        HTML 등)
-      </label>
-      <textarea
-        id="htmlInput"
-        placeholder="페이지 HTML 소스를 통째로 붙여넣고 아래 버튼을 눌러보세요."
-      ></textarea>
+  <!-- 본문 복사 -->
+  <button id="copyBtn">본문 복사하기</button>
 
-      <div class="row">
-        <button id="btnExtractHtml" class="btn btn-outline">
-          HTML에서 본문 추출
-        </button>
-      </div>
+  <div id="status" class="status"></div>
 
-      <div id="statusHtml" class="status"></div>
-    </div>
+  <label>추출된 본문</label>
+  <textarea id="output"></textarea>
+</div>
 
-    <!-- 결과 -->
-    <div class="card result-box">
-      <div class="result-header">
-        <span>추출 결과</span>
-        <div>
-          <button id="btnCopy" class="btn btn-outline" style="font-size: 0.8rem">
-            복사하기
-          </button>
-        </div>
-      </div>
-      <div id="resultContent" class="result-content"></div>
-      <div style="margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap">
-        <span class="pill"
-          >상태: <span id="pillStatus">대기 중</span></span
-        >
-        <span class="pill"
-          >타입: <span id="pillType">-</span></span
-        >
-        <span class="pill"
-          >방법: <span id="pillMethod">-</span></span
-        >
-      </div>
-    </div>
-  </div>
+<script>
+  // 🌐 Cloudflare Worker 주소
+  const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";
 
-  <script>
-    // ==============================
-    // 0. 환경 설정 (네가 배포한 Worker 주소)
-    // ==============================
-    const WORKER_URL = "https://summer-sky-c8a4.jun1317.workers.dev"; // 👈 네 worker URL
+  const $ = (id) => document.getElementById(id);
+  const urlInput   = $("urlInput");
+  const extractBtn = $("extractBtn");
+  const pasteBtn   = $("pasteBtn");
+  const copyBtn    = $("copyBtn");
+  const output     = $("output");
+  const status     = $("status");
 
-    // ==============================
-    // 1. URL 유형 판별
-    // ==============================
-    function isNaverBlog(url) {
-      return /(?:blog\.naver\.com|m\.blog\.naver\.com)/i.test(url);
+  function setStatus(msg, type = "") {
+    status.textContent = msg ?? "";
+    status.className = "status " + type;
+  }
+
+  // ⭐ Ctrl+V 버튼 기능
+  pasteBtn.addEventListener("click", async () => {
+    urlInput.focus();
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) {
+        urlInput.value = text.trim();
+        setStatus("클립보드 주소를 붙여넣었습니다.", "success");
+      } else {
+        setStatus("클립보드에 텍스트가 없습니다. Ctrl+V로 직접 붙여넣기 해주세요.", "error");
+      }
+    } catch (e) {
+      setStatus("브라우저가 자동 붙여넣기를 차단했습니다. Ctrl+V로 직접 붙여넣어 주세요.", "error");
+    }
+  });
+
+  // 🧭 네이버 주소 정규화 (블로그 / 카페 구분 가능하게)
+  function normalizeUrl(url) {
+    url = url.trim();
+
+    // 블로그: https://blog.naver.com/아이디/글번호 → PostView.naver
+    const blogMatch = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
+    if (blogMatch) {
+      return `https://blog.naver.com/PostView.naver?blogId=${blogMatch[1]}&logNo=${blogMatch[2]}`;
     }
 
-    function isNaverCafe(url) {
-      return /(?:cafe\.naver\.com)/i.test(url);
+    // 카페나 기타 네이버는 그냥 원본 유지 (워커에서 추가 처리)
+    return url;
+  }
+
+  // 🔍 페이지 전체 텍스트 보고 비공개/삭제/성인인증 추정
+  function detectPageState(fullText) {
+    if (!fullText) return "unknown";
+
+    const text = fullText.replace(/\s+/g, " ");
+
+    // 비공개 / 이웃공개 / 작성자만
+    if (
+      text.includes("비공개로 설정된 게시글입니다") ||
+      text.includes("작성자만 볼 수 있는 게시글입니다") ||
+      text.includes("이웃에게만 공개된 글입니다") ||
+      text.includes("권한이 없습니다")
+    ) {
+      return "private";
     }
 
-    // ==============================
-    // 2. (지금 네가 가져온) 카페 ArticleRead URL 찾기
-    // ==============================
-    function findCafeArticleUrl(html) {
-      if (!html) return null;
+    // 삭제 / 존재하지 않음
+    if (
+      text.includes("존재하지 않는 게시글입니다") ||
+      text.includes("삭제되었거나 존재하지 않는 게시글입니다") ||
+      text.includes("삭제된 글입니다")
+    ) {
+      return "deleted";
+    }
 
-      let m, url;
+    // 성인 인증
+    if (
+      text.includes("성인 인증이 필요한 글입니다") ||
+      text.includes("성인인증 후 이용 가능합니다") ||
+      text.includes("청소년유해매체물")
+    ) {
+      return "adult";
+    }
 
-      // 1) iframe id="cafe_main"
-      m = html.match(
-        /<iframe[^>]+id=["']cafe_main["'][^>]*src=["']([^"']+)["']/i
-      );
-      url = m && m[1];
+    // web-pc 안내 문구 (카페 SPA 껍데기)
+    if (
+      text.includes("web-pc doesn't work properly without JavaScript enabled") ||
+      text.includes("JavaScript를 활성화")
+    ) {
+      return "js-only";
+    }
 
-      // 2) JS에서 cafe_main.src 설정하는 패턴
-      if (!url) {
-        m = html.match(
-          /cafe_main["']\)\s*\.?\s*src\s*=\s*["']([^"']+)["']/i
-        );
-        url = m && m[1];
+    return "ok";
+  }
+
+  // 🧼 텍스트 정리
+  function normalizeText(text) {
+    if (!text) return "";
+
+    // 이모지 제거 (원하면 주석 처리해도 됨)
+    text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
+
+    // 날짜 라인(2024. 10. 01 이런거) 제거
+    text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");
+
+    // 네이버 공통 버튼/광고 텍스트 제거
+    text = text
+      .replace(/URL\s*복사/g, "")
+      .replace(/이웃추가/g, "")
+      .replace(/본문\s*기타\s*기능/g, "")
+      .replace(/공유하기/g, "")
+      .replace(/신고하기/g, "");
+
+    // 광고 표시 제거
+    text = text
+      .replace(/^\s*\[?\s*광고\s*\]?\s*$/gmi, "")
+      .replace(/스폰서드/gmi, "")
+      .replace(/네이버\s*광고/gmi, "")
+      .replace(/쇼핑\s*광고/gmi, "")
+      .replace(/AD\s*$/gmi, "")
+      .replace(/^AD\b/gmi, "");
+
+    // 개행 정리
+    text = text.replace(/\r\n/g, "\n");
+
+    // 줄 단위 필터링 (태그 덩어리 제거)
+    const lines = text.split("\n");
+    const filtered = [];
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+
+      const hashCount = (line.match(/#/g) || []).length;
+      if (hashCount >= 2 || /^#/.test(line)) continue;
+
+      filtered.push(line);
+    }
+
+    // 문단 유지하면서 공백만 정리
+    const normalizedLines = filtered.map(l => l.replace(/\s+/g, " ").trim());
+    const merged = normalizedLines.join("\n\n"); // ← 문단 구분 유지
+
+    return merged.trim();
+  }
+
+  // 📄 본문 추출
+  async function extract() {
+    let url = urlInput.value.trim();
+    if (!url) {
+      alert("네이버 주소를 입력해주세요.");
+      return;
+    }
+
+    output.value = "";
+    extractBtn.disabled = true;
+    setStatus("HTML 가져오는 중...", "");
+
+    url = normalizeUrl(url);
+
+    try {
+      const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
+      if (!res.ok) throw new Error("Worker 오류(" + res.status + ")");
+
+      const html = await res.text();
+      setStatus("본문 분석 중...", "");
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+
+      // 페이지 전체 텍스트 기반 상태 판별
+      const fullText = (doc.body && doc.body.innerText) ? doc.body.innerText : "";
+      const pageState = detectPageState(fullText);
+
+      if (pageState === "private") {
+        setStatus("비공개/이웃공개 글이라 본문을 열 수 없습니다.", "warn");
+        extractBtn.disabled = false;
+        return;
+      }
+      if (pageState === "deleted") {
+        setStatus("삭제되었거나 존재하지 않는 글입니다.", "warn");
+        extractBtn.disabled = false;
+        return;
+      }
+      if (pageState === "adult") {
+        setStatus("성인 인증이 필요한 글이라 자동 추출이 불가능합니다.", "warn");
+        extractBtn.disabled = false;
+        return;
+      }
+      if (pageState === "js-only") {
+        setStatus("이 페이지는 JS로만 그려져서, 워커에서 ArticleRead.nhn 같은 실제 본문 주소를 다시 따라가도록 수정이 필요합니다.", "warn");
+        extractBtn.disabled = false;
+        return;
       }
 
-      // 3) ArticleRead.nhn? ... 만 문자열로 있을 때
-      if (!url) {
-        m = html.match(/ArticleRead\.nhn\?[^"' ]+/i);
-        url = m && m[0];
-      }
+      // 광고 영역 제거
+      doc
+        .querySelectorAll('div[class*="ad"], section[class*="ad"], aside[class*="ad"]')
+        .forEach(el => el.remove());
 
-      if (!url) return null;
-
-      // 🔥 공백, 탭, 줄바꿈 전부 제거 (네가 준 HTML처럼 중간에 공백이 껴 있는 것 대비)
-      url = url.replace(/\s+/g, "");
-
-      // 절대주소로 정리
-      if (url.startsWith("//")) {
-        url = "https:" + url;
-      } else if (url.startsWith("/")) {
-        url = "https://cafe.naver.com" + url;
-      } else if (!/^https?:\/\//i.test(url)) {
-        url = "https://cafe.naver.com/" + url.replace(/^\//, "");
-      }
-
-      return url;
-    }
-
-    // ==============================
-    // 3. Worker 통해 HTML 가져오기
-    // ==============================
-    async function fetchViaWorker(targetUrl) {
-      const u = new URL(WORKER_URL);
-      u.searchParams.set("url", targetUrl);
-
-      const res = await fetch(u.toString(), {
-        method: "GET",
-      });
-
-      if (!res.ok) {
-        throw new Error("Worker 오류 (" + res.status + ")");
-      }
-
-      const text = await res.text();
-      return text;
-    }
-
-    // ==============================
-    // 4. HTML 문자열 → Document
-    // ==============================
-    function parseHtml(html) {
-      return new DOMParser().parseFromString(html, "text/html");
-    }
-
-    // ==============================
-    // 5. 네이버 블로그 본문 추출
-    // ==============================
-    function extractFromNaverBlog(doc) {
-      // 에디터 v2
-      let el =
-        doc.querySelector(".se-main-container") ||
-        doc.querySelector("div.se_component_wrap");
-
-      // 예전 에디터
-      if (!el) {
-        el =
-          doc.querySelector("#postViewArea") ||
-          doc.querySelector("#printPost1") ||
-          doc.querySelector("#contents");
-      }
-
-      return el ? el.innerText.trim() : "";
-    }
-
-    // ==============================
-    // 6. 네이버 카페 본문 추출 (ArticleRead.nhn, ca-fe ...)
-    // ==============================
-    function extractFromNaverCafe(doc) {
-      const candidates = [
-        "#dic_area",
-        "#userContents",
-        "#articleBody",
-        "#content-area",
+      // 네이버 블로그 / 카페에서 자주 쓰는 컨테이너 후보
+      const selectors = [
         ".se-main-container",
-        "div.ContentRenderer",
+        ".se-viewer",
+        ".se_viewArea",
+        "#postViewArea",
+        ".post_view",
+        "._postView",
+        ".article_view",
+        "#tbody",
+        ".ArticleContent",
+        ".ContentRenderer",    // 혹시 모를 추가 케이스
+        ".view"                // fallback용 넓은 셀렉터
       ];
 
-      for (const sel of candidates) {
+      let content = "";
+      for (const sel of selectors) {
         const el = doc.querySelector(sel);
-        if (el && el.innerText.trim()) {
-          return el.innerText.trim();
+        if (el) {
+          content = el.innerText.trim();
+          if (content.length > 30) break; // 너무 짧은 영역은 패스
         }
       }
 
-      // fallback: 가장 큰 텍스트 영역 candidate
-      let best = "";
-      let bestLen = 0;
-      const divs = doc.querySelectorAll("div");
-      divs.forEach((d) => {
-        const text = d.innerText.trim();
-        const len = text.length;
-        if (len > 300 && len > bestLen) {
-          bestLen = len;
-          best = text;
-        }
-      });
-      return best;
-    }
-
-    // ==============================
-    // 7. 일반 웹페이지 본문 추출 (간단 버전)
-    // ==============================
-    function extractGeneric(doc) {
-      const candidates = [
-        "article",
-        "main",
-        "#content",
-        "#contents",
-        ".article",
-        ".post",
-        ".entry-content",
-      ];
-
-      for (const sel of candidates) {
-        const el = doc.querySelector(sel);
-        if (el && el.innerText.trim()) {
-          return el.innerText.trim();
-        }
+      // 그래도 못 찾으면 div 중 가장 긴 텍스트
+      if (!content) {
+        let longest = "";
+        doc.querySelectorAll("div").forEach(d => {
+          const t = d.innerText.trim();
+          if (t.length > longest.length) longest = t;
+        });
+        content = longest;
       }
 
-      // fallback: 본문이 길어 보이는 div 하나
-      let best = "";
-      let bestLen = 0;
-      const divs = doc.querySelectorAll("div");
-      divs.forEach((d) => {
-        const text = d.innerText.trim();
-        const len = text.length;
-        if (len > 300 && len > bestLen) {
-          bestLen = len;
-          best = text;
-        }
-      });
-      return best;
-    }
-
-    // ==============================
-    // 8. UI 헬퍼
-    // ==============================
-    const $ = (id) => document.getElementById(id);
-
-    function setStatus(targetId, msg, type) {
-      const el = $(targetId);
-      el.textContent = msg || "";
-      el.classList.remove("error", "success");
-      if (type) el.classList.add(type);
-    }
-
-    function setResult(text) {
-      $("resultContent").textContent = text || "";
-    }
-
-    function setPills({ status, type, method }) {
-      if (status !== undefined) $("pillStatus").textContent = status;
-      if (type !== undefined) $("pillType").textContent = type;
-      if (method !== undefined) $("pillMethod").textContent = method;
-    }
-
-    function setLoading(isLoading) {
-      $("btnExtractUrl").disabled = isLoading;
-      $("btnExtractHtml").disabled = isLoading;
-      $("btnCopy").disabled = isLoading;
-    }
-
-    // ==============================
-    // 9. URL로 추출 (버튼 ①)
-    // ==============================
-    async function handleExtractFromUrl() {
-      const rawUrl = $("urlInput").value.trim();
-      if (!rawUrl) {
-        setStatus("statusUrl", "URL을 입력해주세요.", "error");
+      if (!content || !content.trim()) {
+        setStatus("본문을 찾지 못했습니다.", "error");
+        extractBtn.disabled = false;
         return;
       }
 
-      setLoading(true);
-      setStatus("statusUrl", "Worker를 통해 페이지 HTML 가져오는 중...", "");
-      setStatus("statusHtml", "");
-      setResult("");
-      setPills({ status: "처리 중...", type: "-", method: "URL + Worker" });
+      const cleaned = normalizeText(content);
+      output.value = cleaned;
 
-      try {
-        let targetUrl = rawUrl;
-        let pageType = "일반";
+      // 자동 복사 시도
+      navigator.clipboard.writeText(cleaned).catch(() => {});
+      setStatus("본문 추출 완료! (자동 복사됨)", "success");
 
-        // 1단계: 네이버 카페 메인 URL이면 → ArticleRead.nhn URL 찾아서 다시 요청
-        if (isNaverCafe(targetUrl)) {
-          pageType = "네이버 카페";
-
-          const cafeHtml = await fetchViaWorker(targetUrl);
-          if (!cafeHtml) {
-            throw new Error("네이버 카페 HTML을 가져오지 못했습니다.");
-          }
-
-          const articleUrl = findCafeArticleUrl(cafeHtml);
-
-          if (!articleUrl) {
-            setStatus(
-              "statusUrl",
-              [
-                "이 페이지는 JS로만 렌더링되는 구조라 Worker 단독으로는 본문을 가져올 수 없습니다.",
-                "",
-                "가능하면 '모바일/클래식 보기' 주소나 ArticleRead.nhn 형태의 주소를 직접 넣어주세요.",
-              ].join("\n"),
-              "error"
-            );
-            setPills({
-              status: "실패",
-              type: "네이버 카페(웹-PC JS 렌더링)",
-              method: "URL + Worker",
-            });
-            return;
-          }
-
-          targetUrl = articleUrl; // 진짜 본문 페이지로 교체
-        } else if (isNaverBlog(targetUrl)) {
-          pageType = "네이버 블로그";
-        }
-
-        // 2단계: 실제 본문이 있는 targetUrl를 Worker로 받아오기
-        const html = await fetchViaWorker(targetUrl);
-
-        if (!html) {
-          throw new Error("Failed to fetch");
-        }
-
-        const doc = parseHtml(html);
-
-        // 3단계: 타입별로 본문 추출
-        let content = "";
-        if (isNaverBlog(targetUrl)) {
-          content = extractFromNaverBlog(doc);
-          pageType = "네이버 블로그";
-        } else if (isNaverCafe(targetUrl)) {
-          content = extractFromNaverCafe(doc);
-          pageType = "네이버 카페(ArticleRead)";
-        } else {
-          content = extractGeneric(doc);
-          pageType = "일반 페이지";
-        }
-
-        if (!content || !content.trim()) {
-          setStatus(
-            "statusUrl",
-            [
-              "본문을 찾지 못했습니다. (비공개/로그인 필요/구조 특이 가능)",
-              "",
-              "• 카페라면 '모바일 보기'나 ArticleRead.nhn 주소를 직접 복사해서 넣어보세요.",
-              "• 또는 위에서 페이지 HTML을 통째로 붙여넣는 방법(②)도 이용해보세요.",
-            ].join("\n"),
-            "error"
-          );
-          setPills({ status: "실패", type: pageType, method: "URL + Worker" });
-          return;
-        }
-
-        setResult(content);
-        setStatus("statusUrl", "추출 완료!", "success");
-        setPills({ status: "완료", type: pageType, method: "URL + Worker" });
-      } catch (e) {
-        console.error(e);
-        setStatus(
-          "statusUrl",
-          "네트워크 문제로 연결되지 않습니다. 잠시 후에 다시 시도해주세요.\n\n오류 상세: " +
-            (e.message || e),
-          "error"
-        );
-        setPills({ status: "실패", type: "-", method: "URL + Worker" });
-      } finally {
-        setLoading(false);
-      }
+    } catch (err) {
+      console.error(err);
+      setStatus("오류 발생: " + err.message, "error");
     }
 
-    // ==============================
-    // 10. HTML 붙여넣기에서 추출 (버튼 ②)
-    // ==============================
-    function handleExtractFromHtml() {
-      const html = $("htmlInput").value;
-      if (!html.trim()) {
-        setStatus("statusHtml", "HTML을 붙여넣어 주세요.", "error");
-        return;
-      }
+    extractBtn.disabled = false;
+  }
 
-      setLoading(true);
-      setStatus("statusHtml", "로컬에서 HTML 파싱 중...", "");
-      setStatus("statusUrl", "");
-      setResult("");
-      setPills({ status: "처리 중...", type: "-", method: "HTML 붙여넣기" });
+  extractBtn.addEventListener("click", extract);
 
-      try {
-        const doc = parseHtml(html);
-
-        let pageType = "-";
-        let content = "";
-
-        // 네이버 블로그/카페 여부 추측 (meta / og:url 등에 blog/cafe 포함)
-        const htmlLower = html.toLowerCase();
-        if (htmlLower.includes("blog.naver.com") || htmlLower.includes("m.blog.naver.com")) {
-          pageType = "네이버 블로그";
-          content = extractFromNaverBlog(doc);
-        } else if (
-          htmlLower.includes("cafe.naver.com") ||
-          htmlLower.includes("articleread.nhn")
-        ) {
-          pageType = "네이버 카페(ArticleRead 추정)";
-          content = extractFromNaverCafe(doc);
-        } else {
-          pageType = "일반 페이지";
-          content = extractGeneric(doc);
-        }
-
-        if (!content || !content.trim()) {
-          setStatus(
-            "statusHtml",
-            "본문을 찾지 못했습니다. (HTML 구조 특이 가능)",
-            "error"
-          );
-          setPills({
-            status: "실패",
-            type: pageType,
-            method: "HTML 붙여넣기",
-          });
-          return;
-        }
-
-        setResult(content);
-        setStatus("statusHtml", "추출 완료!", "success");
-        setPills({
-          status: "완료",
-          type: pageType,
-          method: "HTML 붙여넣기",
-        });
-      } catch (e) {
-        console.error(e);
-        setStatus(
-          "statusHtml",
-          "오류 발생: " + (e.message || e),
-          "error"
-        );
-        setPills({
-          status: "실패",
-          type: "-",
-          method: "HTML 붙여넣기",
-        });
-      } finally {
-        setLoading(false);
-      }
+  copyBtn.addEventListener("click", () => {
+    const text = output.value.trim();
+    if (!text) {
+      alert("복사할 내용이 없습니다.");
+      return;
     }
+    navigator.clipboard.writeText(text);
+    setStatus("본문이 복사되었습니다!", "success");
+  });
 
-    // ==============================
-    // 11. 복사하기
-    // ==============================
-    async function handleCopy() {
-      const text = $("resultContent").textContent || "";
-      if (!text.trim()) return;
-
-      try {
-        await navigator.clipboard.writeText(text);
-        setStatus("statusUrl", "복사 완료!", "success");
-      } catch (e) {
-        alert("복사 실패: " + (e.message || e));
-      }
-    }
-
-    // ==============================
-    // 12. 초기화
-    // ==============================
-    function handleClear() {
-      $("urlInput").value = "";
-      $("htmlInput").value = "";
-      setStatus("statusUrl", "");
-      setStatus("statusHtml", "");
-      setResult("");
-      setPills({ status: "대기 중", type: "-", method: "-" });
-    }
-
-    // ==============================
-    // 13. 이벤트 바인딩
-    // ==============================
-    $("btnExtractUrl").addEventListener("click", handleExtractFromUrl);
-    $("btnExtractHtml").addEventListener("click", handleExtractFromHtml);
-    $("btnCopy").addEventListener("click", handleCopy);
-    $("btnClear").addEventListener("click", handleClear);
-  </script>
+  urlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") extract();
+  });
+</script>
 </body>
 </html>
