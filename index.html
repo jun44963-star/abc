@@ -56,6 +56,7 @@ function setStatus(msg,type=""){ statusBox.textContent=msg; statusBox.className=
 
 // 블로그 URL 정규화
 function normalizeUrl(url){
+  url = url.trim();
   const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
   if(m){
     return `https://blog.naver.com/PostView.naver?blogId=${m[1]}&logNo=${m[2]}`;
@@ -65,18 +66,31 @@ function normalizeUrl(url){
 
 function cleanText(text){
   if(!text) return "";
+  // 이모지 제거
   text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu,"");
+  // 날짜 라인 제거
   text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm,"");
+  // 네이버 노이즈 제거
   text = text.replace(/URL\s*복사|이웃추가|공유하기|신고하기|본문\s*기타\s*기능/g,"");
+  // 기본 정리
   text = text.replace(/\r\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
   text = text.replace(/\s+([,\.!?;:~…])/g,"$1");
-  const lines = text.split("\n").map(l=>l.trim()).filter(l=>l && !/^#/.test(l));
+  // 줄 단위 필터링
+  const lines = text
+    .split("\n")
+    .map(l=>l.trim())
+    .filter(l=>{
+      if(!l) return false;
+      const hashCount = (l.match(/#/g)||[]).length;
+      if(hashCount>=2 || /^#/.test(l)) return false;
+      return true;
+    });
   return lines.join(" ").replace(/\s+/g," ").trim();
 }
 
 async function fetchHTML(url){
   const res = await fetch(WORKER_URL+"?url="+encodeURIComponent(url));
-  if(!res.ok) throw new Error("proxy fetch error");
+  if(!res.ok) throw new Error("Worker에서 페이지를 가져오지 못했습니다.");
   return await res.text();
 }
 
@@ -84,11 +98,8 @@ async function fetchHTML(url){
 function extractCafeIframe(html){
   let m = html.match(/\$\("cafe_main"\)\.src\s*=\s*"([^"]+)"/);
   if(m) return m[1].replace(/&amp;/g,"&");
-
-  // 새로운 구조 대응
-  m = html.match(/<iframe[^>]+id=["']mainFrame["'][^>]+src=["']([^"']+)["']/);
+  m = html.match(/<iframe[^>]+id=["']mainFrame["'][^>]+src=["']([^"']+)["']/i);
   if(m) return m[1].replace(/&amp;/g,"&");
-
   return null;
 }
 
@@ -97,27 +108,31 @@ async function extract(){
   if(!url){ alert("주소를 입력해 주세요"); return; }
 
   url = normalizeUrl(url);
-  output.value="";
-  extractBtn.disabled=true;
+  output.value = "";
+  extractBtn.disabled = true;
   setStatus("HTML 가져오는 중...");
 
   try{
+    const isCafe = url.includes("cafe.naver.com");
     let html = await fetchHTML(url);
     let targetHtml = html;
 
-    // 네이버 카페라면 iframe 따라가기
-    if(url.includes("cafe.naver.com")){
+    // 카페면 iframe 따라가 보기
+    if(isCafe){
       const iframeSrc = extractCafeIframe(html);
       if(iframeSrc){
         setStatus("카페 본문 iframe 불러오는 중...");
         let realUrl = iframeSrc.startsWith("//")
-          ? "https:"+iframeSrc
-          : iframeSrc.startsWith("/")? "https://cafe.naver.com"+iframeSrc : iframeSrc;
+          ? "https:" + iframeSrc
+          : iframeSrc.startsWith("/")
+            ? "https://cafe.naver.com" + iframeSrc
+            : iframeSrc;
 
         try{
           targetHtml = await fetchHTML(realUrl);
         }catch(e){
-          console.warn("iframe fetch fail:",e);
+          console.warn("iframe fetch 실패, 바디 전체로 시도:", e);
+          targetHtml = html; // 실패 시 원본으로라도 분석
         }
       }
     }
@@ -126,20 +141,22 @@ async function extract(){
     const parser = new DOMParser();
     const doc = parser.parseFromString(targetHtml,"text/html");
 
-    const bodyText = doc.body.innerText||"";
-    if(/네트워크 문제|잠시 후에 다시 시도/.test(bodyText)){
-      setStatus("카페 글 접근 제한: 공개 글이라도 로그인/앱전용일 수 있음","error");
-      extractBtn.disabled=false;
+    // 네이버의 네트워크 오류 안내 페이지 감지
+    const wholeBodyText = (doc.body && doc.body.innerText) ? doc.body.innerText : "";
+    if(/네트워크 문제로 연결되지 않습니다|잠시 후에 다시 시도/g.test(wholeBodyText)){
+      setStatus("네이버에서 이 요청을 '네트워크 문제/비정상 접속'으로 막았습니다. (프록시 IP 차단 가능성)", "error");
+      extractBtn.disabled = false;
       return;
     }
 
-    // 본문 후보 셀렉터
+    // 1차: 대표 본문 셀렉터들
     const selectors = [
+      // 블로그/티스토리
       ".se-main-container",".se-viewer",".se_viewArea","#postViewArea",".post_view","._postView",
-      ".article_view","#article",".entry-content","#content",".tt_article_useless_p_margin",
-      ".ArticleContent",".article_cont",
-      // 카페용
-      "#content-area",".content-area",".article_content",".article_viewer","[data-viewer-type]"
+      ".article_view",".entry-content","#content",".tt_article_useless_p_margin",".ArticleContent",
+      // 카페
+      "#content-area",".content-area",".article_content",".article_viewer",
+      "[data-viewer-type]"
     ];
 
     let content = "";
@@ -148,42 +165,51 @@ async function extract(){
       const el = doc.querySelector(sel);
       if(el){
         const txt = el.innerText.trim();
-        if(txt.length>30){ content=txt; break; }
+        if(txt.length > 20){ // 너무 짧으면 메뉴일 확률 높음
+          content = txt;
+          break;
+        }
       }
     }
 
-    // 백업: div 중 가장 긴 텍스트
+    // 2차: div 중 가장 긴 텍스트
     if(!content){
-      let longest="";
+      let longest = "";
       doc.querySelectorAll("div").forEach(d=>{
-        const t = d.innerText.trim();
-        if(t.length>longest.length) longest=t;
+        const t = (d.innerText||"").trim();
+        if(t.length > longest.length) longest = t;
       });
-      content=longest;
+      if(longest.length > 50) content = longest;
     }
 
-    if(!content.trim()){
-      setStatus("본문을 찾지 못했습니다. (카페 구조 특이 가능)","error");
-      extractBtn.disabled=false;
+    // 3차: 카페인 경우에는 최후의 수단으로 body 전체 사용
+    if(isCafe && (!content || content.trim().length < 50)){
+      content = wholeBodyText;
+    }
+
+    if(!content || !content.trim()){
+      setStatus("본문을 찾지 못했습니다. (카페 글 HTML이 프록시에 제대로 안 넘어온 상태일 수 있음)", "error");
+      extractBtn.disabled = false;
       return;
     }
 
     const cleaned = cleanText(content);
     output.value = cleaned;
     navigator.clipboard.writeText(cleaned).catch(()=>{});
-    setStatus("본문 추출 완료 (자동 복사됨)","success");
+    setStatus("본문 추출 완료 (자동 복사됨)", "success");
 
   }catch(e){
     console.error(e);
-    setStatus("오류 발생: "+e.message,"error");
+    setStatus("오류 발생: " + e.message, "error");
   }
 
-  extractBtn.disabled=false;
+  extractBtn.disabled = false;
 }
 
-extractBtn.addEventListener("click",extract);
+// 이벤트
+extractBtn.addEventListener("click", extract);
 
-pasteBtn.addEventListener("click",async ()=>{
+pasteBtn.addEventListener("click", async ()=>{
   try{
     const text = await navigator.clipboard.readText();
     if(!text){ alert("클립보드에 주소가 없습니다."); return; }
@@ -191,20 +217,22 @@ pasteBtn.addEventListener("click",async ()=>{
     setStatus("주소 붙여넣기 완료 → 자동 추출 시작");
     extract();
   }catch(e){
-    alert("브라우저에서 클립보드 읽기 차단됨. 직접 Ctrl+V 하세요.");
+    alert("브라우저에서 클립보드 읽기를 막았습니다. 입력창에 직접 Ctrl+V 하세요.");
   }
 });
 
-copyBtn.addEventListener("click",()=>{
-  if(!output.value.trim()){ alert("복사할 내용 없음"); return; }
+copyBtn.addEventListener("click", ()=>{
+  if(!output.value.trim()){ alert("복사할 내용이 없습니다."); return; }
   navigator.clipboard.writeText(output.value.trim());
-  setStatus("복사 완료","success");
+  setStatus("복사 완료", "success");
 });
 
-urlInput.addEventListener("paste",()=>{
-  setTimeout(()=>{ if(urlInput.value.trim()) extract(); },10);
+// 입력창에 붙여넣기 했을 때 자동으로 추출
+urlInput.addEventListener("paste", ()=>{
+  setTimeout(()=>{
+    if(urlInput.value.trim()) extract();
+  }, 10);
 });
-
 </script>
 </body>
 </html>
