@@ -57,9 +57,6 @@
     #pasteBtn { background: #0f766e; color: #e5e7eb; margin-bottom: 10px; }
     #pasteBtn:hover { background: #115e59; }
 
-    #extractBtn { background: #22c55e; color: #022c22; margin-bottom: 8px; }
-    #extractBtn:hover { background: #16a34a; }
-
     #copyBtn { background: #1e293b; color: #e5e7eb; margin-top: 8px; }
     #copyBtn:hover { background: #334155; }
 
@@ -78,18 +75,13 @@
   <input
     id="urlInput"
     type="text"
-    placeholder="예: https://blog.naver.com/아이디/글번호"
+    placeholder="붙여넣기 버튼 → 자동 추출됩니다"
     onclick="this.value='';"
   />
-  <p class="hint">
-    ※ 주소 복사 후 <b>Ctrl+V 붙여넣기 버튼</b>을 누르거나, 입력창 클릭 후 <b>Ctrl+V</b>를 누르세요.
-  </p>
+  <p class="hint">※ Ctrl+V 붙여넣기 버튼을 누르면 자동으로 본문이 추출됩니다.</p>
 
   <!-- 붙여넣기 버튼 -->
-  <button id="pasteBtn">Ctrl+V 붙여넣기</button>
-
-  <!-- 본문 추출 -->
-  <button id="extractBtn">본문 추출하기</button>
+  <button id="pasteBtn">Ctrl+V 붙여넣기 (자동 추출)</button>
 
   <!-- 본문 복사 -->
   <button id="copyBtn">본문 복사하기</button>
@@ -101,164 +93,80 @@
 </div>
 
 <script>
-  // 🌐 Cloudflare Worker 주소
   const WORKER_URL = "https://summer-sky-c8a4.jun1317.workers.dev/";
 
   const $ = (id) => document.getElementById(id);
-  const urlInput   = $("urlInput");
-  const extractBtn = $("extractBtn");
-  const pasteBtn   = $("pasteBtn");
-  const copyBtn    = $("copyBtn");
-  const output     = $("output");
-  const status     = $("status");
+  const urlInput = $("urlInput");
+  const pasteBtn = $("pasteBtn");
+  const copyBtn = $("copyBtn");
+  const output = $("output");
+  const status = $("status");
 
   function setStatus(msg, type = "") {
     status.textContent = msg ?? "";
     status.className = "status " + type;
   }
 
-  // ⭐ Ctrl+V 버튼 기능
+  // ⭐ 붙여넣기 → 자동 추출
   pasteBtn.addEventListener("click", async () => {
     urlInput.focus();
     try {
       const text = await navigator.clipboard.readText();
       if (text && text.trim()) {
         urlInput.value = text.trim();
-        setStatus("클립보드 주소를 붙여넣었습니다.", "success");
+        setStatus("주소 붙여넣기 완료! 본문 자동 추출 중...", "success");
+
+        // ⬇⬇⬇ 자동 본문 추출 실행
+        extract();
+
       } else {
-        setStatus("클립보드에 텍스트가 없습니다. Ctrl+V로 직접 붙여넣기 해주세요.", "error");
+        setStatus("클립보드에 주소가 없습니다.", "error");
       }
     } catch (e) {
-      setStatus("브라우저가 자동 붙여넣기를 차단했습니다. Ctrl+V로 직접 붙여넣어 주세요.", "error");
+      setStatus("자동 붙여넣기 차단됨. Ctrl+V로 직접 입력하세요.", "error");
     }
   });
 
-  // 🧭 네이버 주소 정규화 (블로그 / 카페 구분 가능하게)
+  // URL 변환
   function normalizeUrl(url) {
     url = url.trim();
-
-    // 블로그: https://blog.naver.com/아이디/글번호 → PostView.naver
-    const blogMatch = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
-    if (blogMatch) {
-      return `https://blog.naver.com/PostView.naver?blogId=${blogMatch[1]}&logNo=${blogMatch[2]}`;
+    const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
+    if (m) {
+      return `https://blog.naver.com/PostView.naver?blogId=${m[1]}&logNo=${m[2]}`;
     }
-
-    // 카페나 기타 네이버는 그냥 원본 유지 (워커에서 추가 처리)
     return url;
   }
 
-  // 🔍 페이지 전체 텍스트 보고 비공개/삭제/성인인증 추정
-  function detectPageState(fullText) {
-    if (!fullText) return "unknown";
-
-    const text = fullText.replace(/\s+/g, " ");
-
-    // 비공개 / 이웃공개 / 작성자만
-    if (
-      text.includes("비공개로 설정된 게시글입니다") ||
-      text.includes("작성자만 볼 수 있는 게시글입니다") ||
-      text.includes("이웃에게만 공개된 글입니다") ||
-      text.includes("권한이 없습니다")
-    ) {
-      return "private";
-    }
-
-    // 삭제 / 존재하지 않음
-    if (
-      text.includes("존재하지 않는 게시글입니다") ||
-      text.includes("삭제되었거나 존재하지 않는 게시글입니다") ||
-      text.includes("삭제된 글입니다")
-    ) {
-      return "deleted";
-    }
-
-    // 성인 인증
-    if (
-      text.includes("성인 인증이 필요한 글입니다") ||
-      text.includes("성인인증 후 이용 가능합니다") ||
-      text.includes("청소년유해매체물")
-    ) {
-      return "adult";
-    }
-
-    // web-pc 안내 문구 (카페 SPA 껍데기)
-    if (
-      text.includes("web-pc doesn't work properly without JavaScript enabled") ||
-      text.includes("JavaScript를 활성화")
-    ) {
-      return "js-only";
-    }
-
-    return "ok";
-  }
-
-  // 🧼 텍스트 정리
+  // 텍스트 정리
   function normalizeText(text) {
     if (!text) return "";
-
-    // 이모지 제거 (원하면 주석 처리해도 됨)
     text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
-
-    // 날짜 라인(2024. 10. 01 이런거) 제거
     text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");
-
-    // 네이버 공통 버튼/광고 텍스트 제거
     text = text
-      .replace(/URL\s*복사/g, "")
-      .replace(/이웃추가/g, "")
-      .replace(/본문\s*기타\s*기능/g, "")
-      .replace(/공유하기/g, "")
-      .replace(/신고하기/g, "");
+      .replace(/URL\s*복사|이웃추가|본문\s*기타\s*기능|공유하기|신고하기/g, "")
+      .replace(/\r\n/g, "\n");
 
-    // 광고 표시 제거
-    text = text
-      .replace(/^\s*\[?\s*광고\s*\]?\s*$/gmi, "")
-      .replace(/스폰서드/gmi, "")
-      .replace(/네이버\s*광고/gmi, "")
-      .replace(/쇼핑\s*광고/gmi, "")
-      .replace(/AD\s*$/gmi, "")
-      .replace(/^AD\b/gmi, "");
-
-    // 개행 정리
-    text = text.replace(/\r\n/g, "\n");
-
-    // 줄 단위 필터링 (태그 덩어리 제거)
     const lines = text.split("\n");
-    const filtered = [];
-    for (let line of lines) {
-      line = line.trim();
-      if (!line) continue;
+    const filtered = lines
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#") && (l.match(/#/g) || []).length < 2);
 
-      const hashCount = (line.match(/#/g) || []).length;
-      if (hashCount >= 2 || /^#/.test(line)) continue;
-
-      filtered.push(line);
-    }
-
-    // 문단 유지하면서 공백만 정리
-    const normalizedLines = filtered.map(l => l.replace(/\s+/g, " ").trim());
-    const merged = normalizedLines.join("\n\n"); // ← 문단 구분 유지
-
-    return merged.trim();
+    return filtered.join(" ").replace(/\s+/g, " ").trim();
   }
 
-  // 📄 본문 추출
+  // ⭐ 본문 추출 함수
   async function extract() {
     let url = urlInput.value.trim();
-    if (!url) {
-      alert("네이버 주소를 입력해주세요.");
-      return;
-    }
+    if (!url) return;
 
     output.value = "";
-    extractBtn.disabled = true;
     setStatus("HTML 가져오는 중...", "");
 
     url = normalizeUrl(url);
 
     try {
       const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
-      if (!res.ok) throw new Error("Worker 오류(" + res.status + ")");
+      if (!res.ok) throw new Error("Worker 오류");
 
       const html = await res.text();
       setStatus("본문 분석 중...", "");
@@ -266,37 +174,8 @@
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
 
-      // 페이지 전체 텍스트 기반 상태 판별
-      const fullText = (doc.body && doc.body.innerText) ? doc.body.innerText : "";
-      const pageState = detectPageState(fullText);
+      doc.querySelectorAll('div[class*="ad"]').forEach(el => el.remove());
 
-      if (pageState === "private") {
-        setStatus("비공개/이웃공개 글이라 본문을 열 수 없습니다.", "warn");
-        extractBtn.disabled = false;
-        return;
-      }
-      if (pageState === "deleted") {
-        setStatus("삭제되었거나 존재하지 않는 글입니다.", "warn");
-        extractBtn.disabled = false;
-        return;
-      }
-      if (pageState === "adult") {
-        setStatus("성인 인증이 필요한 글이라 자동 추출이 불가능합니다.", "warn");
-        extractBtn.disabled = false;
-        return;
-      }
-      if (pageState === "js-only") {
-        setStatus("이 페이지는 JS로만 그려져서, 워커에서 ArticleRead.nhn 같은 실제 본문 주소를 다시 따라가도록 수정이 필요합니다.", "warn");
-        extractBtn.disabled = false;
-        return;
-      }
-
-      // 광고 영역 제거
-      doc
-        .querySelectorAll('div[class*="ad"], section[class*="ad"], aside[class*="ad"]')
-        .forEach(el => el.remove());
-
-      // 네이버 블로그 / 카페에서 자주 쓰는 컨테이너 후보
       const selectors = [
         ".se-main-container",
         ".se-viewer",
@@ -304,23 +183,19 @@
         "#postViewArea",
         ".post_view",
         "._postView",
-        ".article_view",
-        "#tbody",
-        ".ArticleContent",
-        ".ContentRenderer",    // 혹시 모를 추가 케이스
-        ".view"                // fallback용 넓은 셀렉터
+        ".article_view"
       ];
 
       let content = "";
+
       for (const sel of selectors) {
         const el = doc.querySelector(sel);
         if (el) {
           content = el.innerText.trim();
-          if (content.length > 30) break; // 너무 짧은 영역은 패스
+          break;
         }
       }
 
-      // 그래도 못 찾으면 div 중 가장 긴 텍스트
       if (!content) {
         let longest = "";
         doc.querySelectorAll("div").forEach(d => {
@@ -330,43 +205,30 @@
         content = longest;
       }
 
-      if (!content || !content.trim()) {
+      if (!content.trim()) {
         setStatus("본문을 찾지 못했습니다.", "error");
-        extractBtn.disabled = false;
         return;
       }
 
       const cleaned = normalizeText(content);
       output.value = cleaned;
-
-      // 자동 복사 시도
       navigator.clipboard.writeText(cleaned).catch(() => {});
+
       setStatus("본문 추출 완료! (자동 복사됨)", "success");
 
     } catch (err) {
       console.error(err);
-      setStatus("오류 발생: " + err.message, "error");
+      setStatus("오류: " + err.message, "error");
     }
-
-    extractBtn.disabled = false;
   }
 
-  extractBtn.addEventListener("click", extract);
-
+  // 복사 버튼
   copyBtn.addEventListener("click", () => {
     const text = output.value.trim();
-    if (!text) {
-      alert("복사할 내용이 없습니다.");
-      return;
-    }
+    if (!text) return alert("복사할 내용이 없습니다.");
     navigator.clipboard.writeText(text);
-    setStatus("본문이 복사되었습니다!", "success");
-  });
-
-  urlInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") extract();
+    setStatus("본문 복사됨!", "success");
   });
 </script>
 </body>
 </html>
-
