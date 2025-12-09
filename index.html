@@ -45,6 +45,7 @@
       white-space: pre-wrap;
       padding: 4px;
     }
+
     button {
       width: 100%;
       padding: 12px;
@@ -54,11 +55,9 @@
       cursor: pointer;
       font-size: 0.9rem;
     }
+
     #pasteBtn { background: #0f766e; color: #e5e7eb; margin-bottom: 10px; }
     #pasteBtn:hover { background: #115e59; }
-
-    #copyBtn { background: #1e293b; color: #e5e7eb; margin-top: 8px; }
-    #copyBtn:hover { background: #334155; }
 
     .status { font-size: 0.8rem; margin: 8px 0; color: #9ca3af; }
     .success { color: #4ade80 !important; }
@@ -69,7 +68,7 @@
 
 <body>
 <div class="wrapper">
-  <h1>네이버 글 자동 추출기</h1>
+  <h1>네이버 블로그글 자동 추출기</h1>
 
   <label>네이버 글 주소</label>
   <input
@@ -83,9 +82,6 @@
   <!-- 붙여넣기 버튼 -->
   <button id="pasteBtn">Ctrl+V 붙여넣기 (자동 추출)</button>
 
-  <!-- 본문 복사 -->
-  <button id="copyBtn">본문 복사하기</button>
-
   <div id="status" class="status"></div>
 
   <label>추출된 본문</label>
@@ -98,7 +94,6 @@
   const $ = (id) => document.getElementById(id);
   const urlInput = $("urlInput");
   const pasteBtn = $("pasteBtn");
-  const copyBtn = $("copyBtn");
   const output = $("output");
   const status = $("status");
 
@@ -116,9 +111,7 @@
         urlInput.value = text.trim();
         setStatus("주소 붙여넣기 완료! 본문 자동 추출 중...", "success");
 
-        // ⬇⬇⬇ 자동 본문 추출 실행
-        extract();
-
+        extract(); // 자동 본문 추출 실행
       } else {
         setStatus("클립보드에 주소가 없습니다.", "error");
       }
@@ -154,7 +147,7 @@
     return filtered.join(" ").replace(/\s+/g, " ").trim();
   }
 
-  // ⭐ 본문 추출 함수
+  // ⭐ 본문 추출
   async function extract() {
     let url = urlInput.value.trim();
     if (!url) return;
@@ -221,15 +214,6 @@
       setStatus("오류: " + err.message, "error");
     }
   }
-
-  // 복사 버튼
-  copyBtn.addEventListener("click", () => {
-    const text = output.value.trim();
-    if (!text) return alert("복사할 내용이 없습니다.");
-    navigator.clipboard.writeText(text);
-    setStatus("본문 복사됨!", "success");
-  });
 </script>
 </body>
 </html>
-
