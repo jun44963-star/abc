@@ -86,7 +86,11 @@
 </div>
 
 <script>
+  // 🔗 1순위: 본인 Cloudflare Worker
   const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";
+
+  // 🔗 2순위: 공용 CORS 프록시 (워커가 실패하면 한번 더 시도)
+  const PUBLIC_PROXY = "https://cors.isomorphic-git.org/";
 
   const $ = (id) => document.getElementById(id);
   const urlInput = $("urlInput");
@@ -116,7 +120,7 @@
     // 네이버 카페 (PC)
     m = url.match(/^https?:\/\/cafe\.naver\.com\/([^\/]+)\/(\d+)/);
     if (m) {
-      // 모바일 카페는 서버에서 본문을 그려 주는 경우가 많아서 추출이 더 잘 됨
+      // 모바일 카페는 서버에서 본문을 그려주는 경우가 많음
       return `https://m.cafe.naver.com/${m[1]}/${m[2]}`;
     }
 
@@ -127,6 +131,31 @@
     }
 
     return url;
+  }
+
+  // 👉 여러 프록시를 순차적으로 시도
+  async function fetchHtmlThroughProxy(url) {
+    const targets = [
+      WORKER_URL + "?url=" + encodeURIComponent(url),   // 내 워커
+      PUBLIC_PROXY + encodeURIComponent(url),           // 공용 CORS
+    ];
+
+    let lastError = null;
+
+    for (const proxyUrl of targets) {
+      try {
+        const res = await fetch(proxyUrl);
+        if (!res.ok) {
+          lastError = new Error("프록시 상태 코드: " + res.status);
+          continue;
+        }
+        return await res.text();
+      } catch (e) {
+        lastError = e;
+      }
+    }
+
+    throw lastError || new Error("모든 프록시에서 실패했습니다.");
   }
 
   // 텍스트 정리 로직 (이모지 제거 + 날짜 제거 + 태그 제거 + 광고 제거)
@@ -203,10 +232,7 @@
     url = normalizeUrl(url);
 
     try {
-      const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
-      if (!res.ok) throw new Error("Worker 오류 (Failed to fetch)");
-
-      const html = await res.text();
+      const html = await fetchHtmlThroughProxy(url);
       setStatus("본문 분석 중...", "");
 
       const parser = new DOMParser();
@@ -235,7 +261,7 @@
         const el = doc.querySelector(sel);
         if (el) {
           const text = el.innerText.trim();
-          if (text && text.length > 30) { // 너무 짧은 건 패스
+          if (text && text.length > 30) {
             content = text;
             break;
           }
@@ -273,7 +299,7 @@
 
     } catch (err) {
       console.error(err);
-      setStatus("오류 발생: " + err.message, "error");
+      setStatus("HTML을 가져오지 못했습니다. (프록시 오류) : " + err.message, "error");
     }
 
     extractBtn.disabled = false;
