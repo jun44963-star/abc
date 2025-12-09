@@ -2,91 +2,34 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>네이버 글 자동 추출기</title>
+  <title>네이버 통합 본문 추출기 (블로그/카페/티스토리)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
-      margin: 0;
-      padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #020617;
-      color: #e5e7eb;
-    }
-    .wrapper {
-      max-width: 720px;
-      margin: 0 auto;
-      background: #020617;
-      padding: 24px 20px;
-      border-radius: 16px;
-      border: 1px solid #1f2937;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-    }
-    h1 { margin: 0 0 10px; font-size: 1.4rem; }
-    label { font-size: 0.9rem; color: #9ca3af; }
-    .hint {
-      font-size: 0.78rem;
-      color: #6b7280;
-      margin-top: -4px;
-      margin-bottom: 8px;
-    }
-    input, textarea {
-      width: 100%;
-      margin: 6px 0 14px;
-      padding: 12px;
-      background: #0f172a;
-      border: 1px solid #1f2937;
-      color: #e5e7eb;
-      border-radius: 10px;
-      box-sizing: border-box;
-    }
-    input::placeholder {
-      color: #4b5563;
-    }
-    textarea {
-      min-height: 230px;
-      white-space: pre-wrap;
-      padding: 4px;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      border-radius: 999px;
-      border: none;
-      font-weight: 700;
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-    #pasteBtn {
-      background: #3b82f6;
-      color: #e5f2ff;
-      margin-bottom: 6px;
-    }
-    #pasteBtn:hover {
-      background: #2563eb;
-    }
-    #extractBtn { background: #22c55e; color: #022c22; }
-    #extractBtn:hover { background: #16a34a; }
-    #copyBtn { background: #1e293b; color: #e5e7eb; margin-top: 8px; }
-    #copyBtn:hover { background: #334155; }
-    .status { font-size: 0.8rem; margin: 8px 0; color: #9ca3af; min-height: 1rem; }
-    .success { color: #4ade80 !important; }
-    .error { color: #f87171 !important; }
+    body { margin:0; padding:20px; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#020617; color:#e5e7eb; }
+    .wrapper { max-width:720px; margin:0 auto; padding:24px 20px; background:#020617; border-radius:16px; border:1px solid #1f2937; box-shadow:0 20px 40px rgba(0,0,0,0.6); }
+    h1 { margin:0 0 10px; font-size:1.4rem; }
+    label { font-size:0.9rem; color:#9ca3af; }
+    input, textarea { width:100%; margin:6px 0 14px; padding:12px; background:#0f172a; border:1px solid #1f2937; color:#e5e7eb; border-radius:10px; box-sizing:border-box; }
+    textarea { min-height:240px; white-space:pre-wrap; }
+    button { width:100%; padding:12px; border:none; border-radius:999px; font-weight:700; cursor:pointer; }
+    #pasteBtn { background:#3b82f6; color:#e5f2ff; }
+    #pasteBtn:hover { background:#2563eb; }
+    #extractBtn { background:#22c55e; color:#022c22; margin-top:6px; }
+    #extractBtn:hover { background:#16a34a; }
+    #copyBtn { background:#1e293b; color:#e5e7eb; margin-top:8px; }
+    #copyBtn:hover { background:#334155; }
+    .status { font-size:0.8rem; margin:8px 0; color:#9ca3af; min-height:1rem; }
+    .success { color:#4ade80 !important; }
+    .error { color:#f87171 !important; }
   </style>
 </head>
 
 <body>
 <div class="wrapper">
-  <h1>네이버 글 자동 추출기</h1>
+  <h1>네이버 통합 본문 추출기</h1>
 
-  <label>네이버 / 티스토리 / 카페 글 주소</label>
-  <input
-    id="urlInput"
-    type="text"
-    placeholder="예: https://blog.naver.com/아이디/글번호  또는  https://cafe.naver.com/..."
-  />
-  <div class="hint">
-    주소를 미리 복사해 두고, <b>[Ctrl+V로 주소 붙여넣기]</b> 버튼을 누르면 자동으로 본문 추출이 시작됩니다.
-  </div>
+  <label>블로그 / 카페 / 티스토리 주소</label>
+  <input id="urlInput" type="text" placeholder="https://blog.naver.com/... 또는 https://cafe.naver.com/...">
 
   <button id="pasteBtn">Ctrl+V로 주소 붙여넣기</button>
   <button id="extractBtn">본문 추출하기</button>
@@ -99,280 +42,169 @@
 </div>
 
 <script>
-  const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";
+const WORKER_URL = "https://curly-mud.jun1317.workers.dev/";
 
-  const $ = (id) => document.getElementById(id);
-  const urlInput  = $("urlInput");
-  const extractBtn = $("extractBtn");
-  const copyBtn   = $("copyBtn");
-  const pasteBtn  = $("pasteBtn");
-  const output    = $("output");
-  const status    = $("status");
+const $ = (id)=>document.getElementById(id);
+const urlInput = $("urlInput");
+const output = $("output");
+const statusBox = $("status");
+const extractBtn = $("extractBtn");
+const pasteBtn = $("pasteBtn");
+const copyBtn = $("copyBtn");
 
-  function setStatus(msg, type = "") {
-    status.textContent = msg ?? "";
-    status.className = "status " + type;
+function setStatus(msg,type=""){ statusBox.textContent=msg; statusBox.className="status "+type; }
+
+// 블로그 URL 정규화
+function normalizeUrl(url){
+  const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
+  if(m){
+    return `https://blog.naver.com/PostView.naver?blogId=${m[1]}&logNo=${m[2]}`;
   }
+  return url;
+}
 
-  // /아이디/글번호 → PostView.naver 자동 변환 (네이버 블로그 전용)
-  function normalizeUrl(url) {
-    url = url.trim();
-    const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
-    if (m) {
-      return `https://blog.naver.com/PostView.naver?blogId=${m[1]}&logNo=${m[2]}`;
+function cleanText(text){
+  if(!text) return "";
+  text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu,"");
+  text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm,"");
+  text = text.replace(/URL\s*복사|이웃추가|공유하기|신고하기|본문\s*기타\s*기능/g,"");
+  text = text.replace(/\r\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
+  text = text.replace(/\s+([,\.!?;:~…])/g,"$1");
+  const lines = text.split("\n").map(l=>l.trim()).filter(l=>l && !/^#/.test(l));
+  return lines.join(" ").replace(/\s+/g," ").trim();
+}
+
+async function fetchHTML(url){
+  const res = await fetch(WORKER_URL+"?url="+encodeURIComponent(url));
+  if(!res.ok) throw new Error("proxy fetch error");
+  return await res.text();
+}
+
+// 카페 iframe src 추출
+function extractCafeIframe(html){
+  let m = html.match(/\$\("cafe_main"\)\.src\s*=\s*"([^"]+)"/);
+  if(m) return m[1].replace(/&amp;/g,"&");
+
+  // 새로운 구조 대응
+  m = html.match(/<iframe[^>]+id=["']mainFrame["'][^>]+src=["']([^"']+)["']/);
+  if(m) return m[1].replace(/&amp;/g,"&");
+
+  return null;
+}
+
+async function extract(){
+  let url = urlInput.value.trim();
+  if(!url){ alert("주소를 입력해 주세요"); return; }
+
+  url = normalizeUrl(url);
+  output.value="";
+  extractBtn.disabled=true;
+  setStatus("HTML 가져오는 중...");
+
+  try{
+    let html = await fetchHTML(url);
+    let targetHtml = html;
+
+    // 네이버 카페라면 iframe 따라가기
+    if(url.includes("cafe.naver.com")){
+      const iframeSrc = extractCafeIframe(html);
+      if(iframeSrc){
+        setStatus("카페 본문 iframe 불러오는 중...");
+        let realUrl = iframeSrc.startsWith("//")
+          ? "https:"+iframeSrc
+          : iframeSrc.startsWith("/")? "https://cafe.naver.com"+iframeSrc : iframeSrc;
+
+        try{
+          targetHtml = await fetchHTML(realUrl);
+        }catch(e){
+          console.warn("iframe fetch fail:",e);
+        }
+      }
     }
-    return url;
-  }
 
-  // 텍스트 정리 로직 (이모지 제거 + 날짜 제거 + 태그 제거 + 광고 제거)
-  function normalizeText(text) {
-    if (!text) return "";
+    setStatus("본문 분석 중...");
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(targetHtml,"text/html");
 
-    // 이모지 제거
-    text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
-
-    // 날짜/시간 라인 제거 (2025. 12. 4. 15:14 등)
-    text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");
-
-    // 네이버 노이즈 제거
-    text = text
-      .replace(/URL\s*복사/g, "")
-      .replace(/이웃추가/g, "")
-      .replace(/본문\s*기타\s*기능/g, "")
-      .replace(/공유하기/g, "")
-      .replace(/신고하기/g, "");
-
-    // 광고 문구 제거
-    text = text
-      .replace(/^\s*\[?\s*광고\s*\]?\s*$/gmi, "")
-      .replace(/스폰서드/gmi, "")
-      .replace(/네이버\s*광고/gmi, "")
-      .replace(/쇼핑\s*광고/gmi, "")
-      .replace(/AD\s*$/gmi, "")
-      .replace(/^AD\b/gmi, "");
-
-    // 줄/공백 정리
-    text = text
-      .replace(/\r\n/g, "\n")
-      .replace(/[ \t]+\n/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-
-    // 문장부호 정리
-    text = text
-      .replace(/\s+([,\.!?;:~…])/g, "$1")
-      .replace(/([\.!?])(?=[^\s\n])/g, "$1 ")
-      .replace(/([!?\.])\1{2,}/g, "$1$1");
-
-    // 줄 단위로 나누고, 태그 줄 제거
-    const lines = text.split("\n");
-    const filtered = [];
-
-    for (let line of lines) {
-      line = line.trim();
-      if (!line) continue;
-
-      const hashCount = (line.match(/#/g) || []).length;
-      if (hashCount >= 2 || /^#/.test(line)) continue; // 태그 줄 제거
-
-      filtered.push(line);
-    }
-
-    // 줄바꿈 없이 한 줄로 붙이기 (문장 사이 공백 1칸만 유지)
-    let merged = filtered.join(" ");
-    merged = merged.replace(/\s+/g, " ");
-    return merged.trim();
-  }
-
-  async function fetchViaWorker(rawUrl) {
-    const res = await fetch(
-      WORKER_URL + "?url=" + encodeURIComponent(rawUrl)
-    );
-    if (!res.ok) {
-      throw new Error("Worker 오류 (Failed to fetch)");
-    }
-    return res.text();
-  }
-
-  async function extract() {
-    let url = urlInput.value.trim();
-    if (!url) {
-      alert("네이버/티스토리/카페 주소를 입력해주세요");
+    const bodyText = doc.body.innerText||"";
+    if(/네트워크 문제|잠시 후에 다시 시도/.test(bodyText)){
+      setStatus("카페 글 접근 제한: 공개 글이라도 로그인/앱전용일 수 있음","error");
+      extractBtn.disabled=false;
       return;
     }
 
-    output.value = "";
-    extractBtn.disabled = true;
-    setStatus("HTML 가져오는 중...", "");
+    // 본문 후보 셀렉터
+    const selectors = [
+      ".se-main-container",".se-viewer",".se_viewArea","#postViewArea",".post_view","._postView",
+      ".article_view","#article",".entry-content","#content",".tt_article_useless_p_margin",
+      ".ArticleContent",".article_cont",
+      // 카페용
+      "#content-area",".content-area",".article_content",".article_viewer","[data-viewer-type]"
+    ];
 
-    url = normalizeUrl(url);
+    let content = "";
 
-    try {
-      // 1차: 사용자가 넣은 주소 HTML
-      let html = await fetchViaWorker(url);
-      let targetHtml = html;
-
-      // ★ 네이버 카페 전용 처리
-      // cafe_main iframe src를 JS 안에서 찾기
-      const cafeMatch = html.match(
-        /\$\("cafe_main"\)\.src\s*=\s*"([^"]+)"/
-      );
-      if (cafeMatch) {
-        setStatus("네이버 카페 본문 프레임 불러오는 중...", "");
-        let cafeUrl = cafeMatch[1].trim().replace(/&amp;/g, "&");
-
-        // //cafe.naver.com/... → https: 붙이기
-        if (cafeUrl.startsWith("//")) {
-          cafeUrl = "https:" + cafeUrl;
-        } else if (cafeUrl.startsWith("/")) {
-          // /ArticleRead.nhn… 형태
-          cafeUrl = "https://cafe.naver.com" + cafeUrl;
-        }
-
-        try {
-          targetHtml = await fetchViaWorker(cafeUrl);
-        } catch (e) {
-          console.warn("카페 본문 프레임 요청 실패:", e);
-          // 실패 시 원래 html 그대로 사용
-        }
+    for(const sel of selectors){
+      const el = doc.querySelector(sel);
+      if(el){
+        const txt = el.innerText.trim();
+        if(txt.length>30){ content=txt; break; }
       }
-
-      setStatus("본문 분석 중...", "");
-
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(targetHtml, "text/html");
-
-      // 카페/블로그에서 "네트워크 문제" 안내 페이지만 온 경우
-      const rawText = doc.body ? doc.body.innerText : "";
-      if (
-        /네트워크 문제로 연결되지 않습니다/.test(rawText) ||
-        /잠시 후에 다시 시도해주세요/.test(rawText)
-      ) {
-        setStatus(
-          "네이버 카페: 네트워크/권한 제한으로 본문에 접근할 수 없습니다. (비공개/로그인/앱 전용 글일 수 있음)",
-          "error"
-        );
-        extractBtn.disabled = false;
-        return;
-      }
-
-      // 광고 블록 제거
-      doc
-        .querySelectorAll(
-          'div[class*="ad"], section[class*="ad"], aside[class*="ad"]'
-        )
-        .forEach((el) => el.remove());
-
-      // 본문 후보 영역
-      const selectors = [
-        // 네이버 블로그
-        ".se-main-container",
-        ".se-viewer",
-        ".se_viewArea",
-        "#postViewArea",
-        ".post_view",
-        "._postView",
-        // 티스토리/일반
-        ".article_view",
-        "#content",
-        "#article",
-        ".entry-content",
-        "#tbody",
-        ".ArticleContent",
-        ".tt_article_useless_p_margin"
-      ];
-
-      let content = "";
-      for (const sel of selectors) {
-        const el = doc.querySelector(sel);
-        if (el) {
-          content = el.innerText.trim();
-          if (content.length > 50) break; // 너무 짧은 건 패스
-        }
-      }
-
-      // 백업: div 중 가장 긴 텍스트
-      if (!content) {
-        let longest = "";
-        doc.querySelectorAll("div").forEach((d) => {
-          const t = d.innerText.trim();
-          if (t.length > longest.length) longest = t;
-        });
-        content = longest;
-      }
-
-      if (!content.trim()) {
-        setStatus(
-          "본문을 찾지 못했습니다. (비공개/로그인 필요/구조 특이)",
-          "error"
-        );
-        extractBtn.disabled = false;
-        return;
-      }
-
-      const cleaned = normalizeText(content);
-      output.value = cleaned;
-
-      navigator.clipboard.writeText(cleaned).catch(() => {});
-      setStatus("본문 추출 완료! (자동 복사됨)", "success");
-    } catch (err) {
-      console.error(err);
-      setStatus("오류 발생: " + err.message, "error");
     }
 
-    extractBtn.disabled = false;
-  }
-
-  // [본문 추출하기] 버튼
-  extractBtn.addEventListener("click", extract);
-
-  // [Ctrl+V로 주소 붙여넣기] 버튼
-  pasteBtn.addEventListener("click", async () => {
-    try {
-      const clip = await navigator.clipboard.readText();
-      if (!clip) {
-        alert("클립보드에 주소가 없습니다.\n먼저 복사(Ctrl+C)해 주세요.");
-        return;
-      }
-      urlInput.value = clip.trim();
-      setStatus("주소를 붙여넣었습니다. 본문을 자동 추출합니다...", "success");
-      extract();
-    } catch (e) {
-      console.error(e);
-      alert(
-        "브라우저에서 클립보드 읽기를 허용해 주세요.\n만약 안 되면 주소 칸을 클릭하고 직접 Ctrl+V로 붙여넣어 주세요."
-      );
+    // 백업: div 중 가장 긴 텍스트
+    if(!content){
+      let longest="";
+      doc.querySelectorAll("div").forEach(d=>{
+        const t = d.innerText.trim();
+        if(t.length>longest.length) longest=t;
+      });
+      content=longest;
     }
-  });
 
-  // [복사하기] 버튼
-  copyBtn.addEventListener("click", () => {
-    const text = output.value.trim();
-    if (!text) {
-      alert("복사할 내용이 없습니다.");
+    if(!content.trim()){
+      setStatus("본문을 찾지 못했습니다. (카페 구조 특이 가능)","error");
+      extractBtn.disabled=false;
       return;
     }
-    navigator.clipboard.writeText(text);
-    setStatus("다시 복사되었습니다!", "success");
-  });
 
-  // 엔터 눌러도 바로 추출
-  urlInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      extract();
-    }
-  });
+    const cleaned = cleanText(content);
+    output.value = cleaned;
+    navigator.clipboard.writeText(cleaned).catch(()=>{});
+    setStatus("본문 추출 완료 (자동 복사됨)","success");
 
-  // 주소칸에 직접 붙여넣기(Ctrl+V) 했을 때 자동 추출
-  urlInput.addEventListener("paste", () => {
-    setTimeout(() => {
-      if (urlInput.value.trim()) {
-        setStatus("주소를 붙여넣었습니다. 본문을 자동 추출합니다...", "success");
-        extract();
-      }
-    }, 10);
-  });
+  }catch(e){
+    console.error(e);
+    setStatus("오류 발생: "+e.message,"error");
+  }
+
+  extractBtn.disabled=false;
+}
+
+extractBtn.addEventListener("click",extract);
+
+pasteBtn.addEventListener("click",async ()=>{
+  try{
+    const text = await navigator.clipboard.readText();
+    if(!text){ alert("클립보드에 주소가 없습니다."); return; }
+    urlInput.value = text.trim();
+    setStatus("주소 붙여넣기 완료 → 자동 추출 시작");
+    extract();
+  }catch(e){
+    alert("브라우저에서 클립보드 읽기 차단됨. 직접 Ctrl+V 하세요.");
+  }
+});
+
+copyBtn.addEventListener("click",()=>{
+  if(!output.value.trim()){ alert("복사할 내용 없음"); return; }
+  navigator.clipboard.writeText(output.value.trim());
+  setStatus("복사 완료","success");
+});
+
+urlInput.addEventListener("paste",()=>{
+  setTimeout(()=>{ if(urlInput.value.trim()) extract(); },10);
+});
+
 </script>
 </body>
 </html>
