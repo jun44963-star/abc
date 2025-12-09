@@ -152,7 +152,7 @@
 </div>
 
 <script>
-  // ✅ 새 Cloudflare Worker 주소 (curly-mud → summer-sky-c8a4 로 변경됨)
+  // ✅ 새 Cloudflare Worker 주소
   const WORKER_URL = "https://summer-sky-c8a4.jun1317.workers.dev/";
 
   const $ = (id) => document.getElementById(id);
@@ -212,8 +212,8 @@
     return null;
   }
 
-  // 텍스트 정리
-  function normalizeText(text) {
+  // 👉 강한 정리(광고/태그/공백 정리) 함수
+  function normalizeStrong(text) {
     if (!text) return "";
 
     // 이모지 제거
@@ -258,15 +258,25 @@
       line = line.trim();
       if (!line) continue;
 
+      // 태그 줄만 있는 경우 제거
       const hashCount = (line.match(/#/g) || []).length;
-      if (hashCount >= 2 || /^#/.test(line)) continue; // 태그만 있는 줄 제거
-
+      if (hashCount >= 10) continue; // 해시태그만 잔뜩인 줄일 때만 컷
       filtered.push(line);
     }
 
     let merged = filtered.join(" ");
     merged = merged.replace(/\s+/g, " ");
     return merged.trim();
+  }
+
+  // 👉 너무 많이 지워졌을 때 쓰는 부드러운 정리 함수
+  function normalizeSoft(text) {
+    if (!text) return "";
+    return text
+      .replace(/\r\n/g, "\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   }
 
   // 공통: HTML 문자열 → 본문 텍스트 추출
@@ -278,44 +288,59 @@
     doc.querySelectorAll('div[class*="ad"], section[class*="ad"], aside[class*="ad"]').forEach(el => el.remove());
 
     const selectors = [
+      // 네이버 블로그(새 에디터)
       ".se-main-container",
-      ".se-viewer",
       ".se_viewArea",
+      ".blog2_container",
+      ".blog2_contents",
       "#postViewArea",
       ".post_view",
       "._postView",
+      // 카페/기타
       ".article_view",
       "#tbody",
       ".ArticleContent",
       "article"
     ];
 
-    let content = "";
+    let raw = "";
     for (const sel of selectors) {
       const el = doc.querySelector(sel);
       if (el) {
         const t = (el.innerText || "").trim();
-        if (t.length > 40) {
-          content = t;
+        if (t.length > 0) {
+          raw = t;
           break;
         }
       }
     }
 
     // 백업: 가장 긴 div 텍스트
-    if (!content) {
+    if (!raw) {
       let longest = "";
       doc.querySelectorAll("div").forEach((d) => {
         const t = (d.innerText || "").trim();
         if (t.length > longest.length) longest = t;
       });
-      content = longest;
+      raw = longest;
     }
 
-    if (!content || !content.trim()) {
+    if (!raw || !raw.trim()) {
       return "";
     }
-    return normalizeText(content);
+
+    // 1차: 강하게 정리
+    let cleaned = normalizeStrong(raw);
+
+    // 2차: 너무 짧게 날아간 경우, 부드러운 정리로 대체
+    if (!cleaned || cleaned.length < 30) {
+      cleaned = normalizeSoft(raw);
+    }
+
+    // 그래도 없으면 실패 처리
+    if (!cleaned || !cleaned.trim()) return "";
+
+    return cleaned.trim();
   }
 
   async function fetchThroughWorker(targetUrl) {
@@ -349,7 +374,6 @@
       try {
         html = await fetchThroughWorker(url);
       } catch (err) {
-        // 네트워크/연결 문제
         if (err.name === "TypeError") {
           setStatus(
             "Worker에 연결할 수 없습니다. (Failed to fetch)\n\n" +
@@ -357,8 +381,8 @@
             "   " + WORKER_URL + "?url=https://naver.com\n" +
             "   → 열리지 않으면 Cloudflare Worker 쪽 문제입니다.\n\n" +
             "2) Cloudflare 대시보드에서\n" +
-            "   - 워커 이름/도메인(curly-mud → summer-sky-c8a4) 변경 여부\n" +
-            "   - HTTPS 설정 / 라우트 설정 / 에러 로그를 확인해주세요.\n\n" +
+            "   - 워커 도메인 설정\n" +
+            "   - HTTPS / 라우트 / 에러 로그를 확인해주세요.\n\n" +
             "3) 그동안은 아래 [HTML 전체 붙여넣기] 모드를 사용하시면\n" +
             "   Worker 없이도 본문 추출이 가능합니다.",
             "error"
