@@ -43,7 +43,7 @@
     textarea {
       min-height: 230px;
       white-space: pre-wrap;
-      padding: 4px;
+      padding: 12px; /* 패딩을 통일 */
     }
 
     button {
@@ -54,15 +54,40 @@
       font-weight: 700;
       cursor: pointer;
       font-size: 0.9rem;
+      transition: background-color 0.2s;
     }
 
-    #pasteBtn { background: #0f766e; color: #e5e7eb; margin-bottom: 10px; }
+    #pasteBtn { 
+      background: #0f766e; 
+      color: #e5e7eb; 
+      margin-bottom: 10px; 
+    }
     #pasteBtn:hover { background: #115e59; }
+
+    #shareBtn {
+      background: #1e40af; /* 공유 버튼 색상 */
+      color: #e5e7eb;
+      margin-top: 10px;
+    }
+    #shareBtn:hover { background: #1e3a8a; }
 
     .status { font-size: 0.8rem; margin: 8px 0; color: #9ca3af; }
     .success { color: #4ade80 !important; }
     .error { color: #f87171 !important; }
     .warn { color: #facc15 !important; }
+    
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+    .footer a {
+      color: #38bdf8; /* 링크 색상 */
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 
@@ -79,13 +104,18 @@
   />
   <p class="hint">※ Ctrl+V 붙여넣기 버튼을 누르면 자동으로 본문이 추출됩니다.</p>
 
-  <!-- 붙여넣기 버튼 -->
   <button id="pasteBtn">Ctrl+V 붙여넣기 (자동 추출)</button>
 
   <div id="status" class="status"></div>
 
   <label>추출된 본문</label>
   <textarea id="output"></textarea>
+
+  <button id="shareBtn">추출된 본문 공유하기</button>
+  
+  <div class="footer">
+    <a href="https://hjkim20089.tistory.com/" target="_blank">만든이 홈페이지 바로가기</a>
+  </div>
 </div>
 
 <script>
@@ -96,6 +126,7 @@
   const pasteBtn = $("pasteBtn");
   const output = $("output");
   const status = $("status");
+  const shareBtn = $("shareBtn"); // 공유 버튼 요소 추가
 
   function setStatus(msg, type = "") {
     status.textContent = msg ?? "";
@@ -133,8 +164,11 @@
   // 텍스트 정리
   function normalizeText(text) {
     if (!text) return "";
+    // 이모지 제거
     text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
+    // 날짜/시간 형식 라인 제거
     text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");
+    // 불필요한 텍스트 제거
     text = text
       .replace(/URL\s*복사|이웃추가|본문\s*기타\s*기능|공유하기|신고하기/g, "")
       .replace(/\r\n/g, "\n");
@@ -144,6 +178,7 @@
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith("#") && (l.match(/#/g) || []).length < 2);
 
+    // 여러 공백을 하나로, 시작/끝 공백 제거
     return filtered.join(" ").replace(/\s+/g, " ").trim();
   }
 
@@ -158,8 +193,9 @@
     url = normalizeUrl(url);
 
     try {
+      // CORS 문제 해결을 위해 Worker를 통해 HTML 요청
       const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
-      if (!res.ok) throw new Error("Worker 오류");
+      if (!res.ok) throw new Error("Worker 오류 또는 URL 접근 실패");
 
       const html = await res.text();
       setStatus("본문 분석 중...", "");
@@ -167,6 +203,7 @@
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
 
+      // 광고 요소 제거
       doc.querySelectorAll('div[class*="ad"]').forEach(el => el.remove());
 
       const selectors = [
@@ -181,6 +218,7 @@
 
       let content = "";
 
+      // 네이버 블로그 콘텐츠 영역 탐색
       for (const sel of selectors) {
         const el = doc.querySelector(sel);
         if (el) {
@@ -189,6 +227,7 @@
         }
       }
 
+      // 콘텐츠가 없을 경우 가장 긴 innerText를 가진 div를 사용 (최후의 수단)
       if (!content) {
         let longest = "";
         doc.querySelectorAll("div").forEach(d => {
@@ -199,21 +238,52 @@
       }
 
       if (!content.trim()) {
-        setStatus("본문을 찾지 못했습니다.", "error");
+        setStatus("본문을 찾지 못했습니다. URL을 확인해 주세요.", "error");
         return;
       }
 
       const cleaned = normalizeText(content);
       output.value = cleaned;
+      
+      // 추출된 텍스트 클립보드에 복사
       navigator.clipboard.writeText(cleaned).catch(() => {});
 
       setStatus("본문 추출 완료! (자동 복사됨)", "success");
 
     } catch (err) {
       console.error(err);
-      setStatus("오류: " + err.message, "error");
+      setStatus("오류: " + (err.message || "알 수 없는 오류 발생"), "error");
     }
   }
+  
+  // ⭐ 공유하기 기능
+  async function shareOutput() {
+    const textToShare = output.value.trim();
+    
+    if (!textToShare) {
+      setStatus("추출된 본문이 없습니다.", "warn");
+      return;
+    }
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: '네이버 블로그 추출 본문',
+          text: textToShare,
+        });
+        // setStatus("본문 공유 완료!", "success"); // 공유 API는 완료 콜백이 보장되지 않으므로 상태 업데이트 생략
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setStatus("공유 실패: " + error.message, "error");
+        }
+      }
+    } else {
+      setStatus("⚠️ 이 브라우저는 공유 기능을 지원하지 않습니다. (텍스트는 이미 복사됨)", "warn");
+    }
+  }
+  
+  // 공유 버튼 이벤트 리스너
+  shareBtn.addEventListener("click", shareOutput);
 </script>
 </body>
 </html>
