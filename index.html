@@ -43,7 +43,7 @@
     textarea {
       min-height: 230px;
       white-space: pre-wrap;
-      padding: 12px; /* 패딩을 통일 */
+      padding: 12px;
     }
 
     button {
@@ -64,13 +64,6 @@
     }
     #pasteBtn:hover { background: #115e59; }
 
-    #shareBtn {
-      background: #1e40af; /* 공유 버튼 색상 */
-      color: #e5e7eb;
-      margin-top: 10px;
-    }
-    #shareBtn:hover { background: #1e3a8a; }
-
     .status { font-size: 0.8rem; margin: 8px 0; color: #9ca3af; }
     .success { color: #4ade80 !important; }
     .error { color: #f87171 !important; }
@@ -82,7 +75,7 @@
       font-size: 0.8rem;
     }
     .footer a {
-      color: #38bdf8; /* 링크 색상 */
+      color: #38bdf8;
       text-decoration: none;
     }
     .footer a:hover {
@@ -111,8 +104,6 @@
   <label>추출된 본문</label>
   <textarea id="output"></textarea>
 
-  <button id="shareBtn">추출된 본문 공유하기</button>
-  
   <div class="footer">
     <a href="https://hjkim20089.tistory.com/" target="_blank">만든이 홈페이지 바로가기</a>
   </div>
@@ -126,7 +117,6 @@
   const pasteBtn = $("pasteBtn");
   const output = $("output");
   const status = $("status");
-  const shareBtn = $("shareBtn"); // 공유 버튼 요소 추가
 
   function setStatus(msg, type = "") {
     status.textContent = msg ?? "";
@@ -255,35 +245,6 @@
       setStatus("오류: " + (err.message || "알 수 없는 오류 발생"), "error");
     }
   }
-  
-  // ⭐ 공유하기 기능
-  async function shareOutput() {
-    const textToShare = output.value.trim();
-    
-    if (!textToShare) {
-      setStatus("추출된 본문이 없습니다.", "warn");
-      return;
-    }
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: '네이버 블로그 추출 본문',
-          text: textToShare,
-        });
-        // setStatus("본문 공유 완료!", "success"); // 공유 API는 완료 콜백이 보장되지 않으므로 상태 업데이트 생략
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          setStatus("공유 실패: " + error.message, "error");
-        }
-      }
-    } else {
-      setStatus("⚠️ 이 브라우저는 공유 기능을 지원하지 않습니다. (텍스트는 이미 복사됨)", "warn");
-    }
-  }
-  
-  // 공유 버튼 이벤트 리스너
-  shareBtn.addEventListener("click", shareOutput);
 </script>
 </body>
 </html>
