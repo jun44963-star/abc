@@ -28,6 +28,7 @@
       font-size: 0.75rem;
       color: #6b7280;
       margin: -8px 0 10px;
+      line-height: 1.4;
     }
 
     input, textarea {
@@ -51,24 +52,34 @@
       padding: 12px;
       border-radius: 999px;
       border: none;
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
       font-size: 0.9rem;
-      transition: background-color 0.2s;
+      transition: background-color 0.2s, transform 0.05s;
+      user-select: none;
     }
+    button:active { transform: scale(0.99); }
 
-    #pasteBtn { 
-      background: #0f766e; 
-      color: #e5e7eb; 
-      margin-bottom: 10px; 
+    #pasteBtn {
+      background: #0f766e;
+      color: #e5e7eb;
+      margin-bottom: 10px;
     }
     #pasteBtn:hover { background: #115e59; }
 
-    .status { font-size: 0.8rem; margin: 8px 0; color: #9ca3af; }
+    #copyBtn{
+      background:#2563eb;
+      color:#e5e7eb;
+      margin-bottom: 10px;
+      display:none; /* 추출 후 표시 */
+    }
+    #copyBtn:hover { background:#1d4ed8; }
+
+    .status { font-size: 0.8rem; margin: 8px 0 12px; color: #9ca3af; }
     .success { color: #4ade80 !important; }
     .error { color: #f87171 !important; }
     .warn { color: #facc15 !important; }
-    
+
     .footer {
       margin-top: 20px;
       text-align: center;
@@ -78,9 +89,7 @@
       color: #38bdf8;
       text-decoration: none;
     }
-    .footer a:hover {
-      text-decoration: underline;
-    }
+    .footer a:hover { text-decoration: underline; }
   </style>
 </head>
 
@@ -95,14 +104,18 @@
     placeholder="붙여넣기 버튼 → 자동 추출됩니다"
     onclick="this.value='';"
   />
-  <p class="hint">※ Ctrl+V 붙여넣기 버튼을 누르면 자동으로 본문이 추출됩니다.</p>
+  <p class="hint">
+    ※ Ctrl+V 붙여넣기 버튼을 누르면 자동으로 본문이 추출됩니다.<br/>
+    ※ 자동복사가 막히면 “본문 복사” 버튼으로 확정 복사됩니다.
+  </p>
 
   <button id="pasteBtn">Ctrl+V 붙여넣기 (자동 추출)</button>
+  <button id="copyBtn">본문 복사</button>
 
   <div id="status" class="status"></div>
 
   <label>추출된 본문</label>
-  <textarea id="output"></textarea>
+  <textarea id="output" placeholder="여기에 본문이 표시됩니다."></textarea>
 
   <div class="footer">
     <a href="https://hjkim20089.tistory.com/" target="_blank">만든이 홈페이지 바로가기</a>
@@ -115,12 +128,37 @@
   const $ = (id) => document.getElementById(id);
   const urlInput = $("urlInput");
   const pasteBtn = $("pasteBtn");
+  const copyBtn = $("copyBtn");
   const output = $("output");
   const status = $("status");
 
   function setStatus(msg, type = "") {
     status.textContent = msg ?? "";
     status.className = "status " + type;
+  }
+
+  // ✅ 클립보드 복사: 표준 API + fallback(execCommand)
+  async function copyToClipboard(text) {
+    // 1) 표준 API (HTTPS + 사용자 제스처 환경에서 안정)
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (e) {}
+
+    // 2) fallback: textarea 선택 + execCommand(copy)
+    try {
+      output.focus();
+      output.value = text;
+      output.select();
+      output.setSelectionRange(0, text.length); // 모바일 대응
+      const ok = document.execCommand("copy");
+      output.blur();
+      return !!ok;
+    } catch (e) {
+      return false;
+    }
   }
 
   // ✅ 붙여넣기 → 자동 추출
@@ -140,6 +178,20 @@
     }
   });
 
+  // ✅ 복사 버튼
+  copyBtn.addEventListener("click", async () => {
+    const text = output.value.trim();
+    if (!text) return setStatus("복사할 본문이 없습니다.", "error");
+    const ok = await copyToClipboard(text);
+    setStatus(ok ? "복사 완료!" : "복사 실패(브라우저 제한). 전체 선택 상태로 두었습니다.", ok ? "success" : "warn");
+    if (!ok) {
+      // 실패 시라도 사용자가 바로 복사 가능하게 선택 유지
+      output.focus();
+      output.select();
+      output.setSelectionRange(0, text.length);
+    }
+  });
+
   // ✅ URL 정규화 (모바일 우선)
   function normalizeUrl(url) {
     url = (url || "").trim();
@@ -155,15 +207,13 @@
     return url;
   }
 
- <script>
-  ...
-  // 🔥 여기 이 함수만 교체
+  // ✅ 텍스트 정리(너무 공격적으로 삭제하지 않음)
   function normalizeText(text) {
     if (!text) return "";
 
     text = text
-      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "")
-      .replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "")
+      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "") // 이모지 제거(필요 없으면 주석처리)
+      .replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "")         // 날짜 라인 제거(과하면 주석처리)
       .replace(/URL\s*복사|이웃추가|본문\s*기타\s*기능|공유하기|신고하기/g, "")
       .replace(/\r\n/g, "\n");
 
@@ -174,16 +224,16 @@
 
     let joined = lines.join("\n");
 
+    // 줄 삭제가 아니라 "#태그만" 제거
     joined = joined
       .replace(/#[^\s#]+/g, "")
       .replace(/\s{2,}/g, " ")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
+    // 최종 출력은 한 줄(원하면 줄바꿈 유지로 바꿔도 됨)
     return joined.replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
   }
-  ...
-</script>
 
   // ✅ Worker 통해 HTML 가져오기
   async function fetchViaWorker(url) {
@@ -194,8 +244,8 @@
 
   // ✅ 문서에서 본문 뽑기
   function extractContentFromDoc(doc) {
-    // 광고 제거(대충)
-    doc.querySelectorAll('div[class*="ad"], iframe, script, noscript').forEach(el => el.remove());
+    // 광고/불필요 요소 제거(가볍게)
+    doc.querySelectorAll('iframe, script, noscript, div[class*="ad"], div[class*="Ad"]').forEach(el => el.remove());
 
     const selectors = [
       ".se-main-container",
@@ -203,7 +253,8 @@
       ".se-viewer",
       ".post_view",
       "._postView",
-      ".article_view"
+      ".article_view",
+      "article"
     ];
 
     for (const sel of selectors) {
@@ -216,19 +267,20 @@
 
     // 최후: 가장 긴 텍스트 블록
     let longest = "";
-    doc.querySelectorAll("div, article, section").forEach(d => {
+    doc.querySelectorAll("div, article, section, main").forEach(d => {
       const t = (d.innerText || d.textContent || "").trim();
       if (t.length > longest.length) longest = t;
     });
     return longest;
   }
 
-  // ⭐ 본문 추출 (핵심: iframe(mainFrame) 따라가기)
+  // ⭐ 본문 추출 (iframe(mainFrame) 따라가기)
   async function extract() {
     let url = normalizeUrl(urlInput.value);
     if (!url) return;
 
     output.value = "";
+    copyBtn.style.display = "none";
     setStatus("HTML 가져오는 중...", "");
 
     try {
@@ -236,13 +288,11 @@
       let html = await fetchViaWorker(url);
       let doc = new DOMParser().parseFromString(html, "text/html");
 
-      // ✅ PC 프레임 구조면(mainFrame) src 따라가서 2차 fetch
+      // PC 프레임 구조면(mainFrame) src 따라가서 2차 fetch
       const mainFrame = doc.querySelector("#mainFrame");
       if (mainFrame && mainFrame.getAttribute("src")) {
         setStatus("프레임 구조 감지 → 본문 페이지 2차 로딩 중...", "");
         let src = mainFrame.getAttribute("src").trim();
-
-        // 상대경로면 절대경로로
         if (src.startsWith("/")) src = "https://blog.naver.com" + src;
         if (src.startsWith("//")) src = "https:" + src;
 
@@ -259,17 +309,30 @@
       }
 
       const cleaned = normalizeText(content);
+
+      // 정리가 너무 강해서 비는 경우: 원문이라도 보여주기
       if (!cleaned) {
-        setStatus("본문은 잡혔지만 정리 과정에서 전부 제거되었습니다. (필터 조건이 너무 강함)", "warn");
         output.value = content.trim();
+        copyBtn.style.display = "block";
+        setStatus("본문은 잡혔지만 정리 결과가 비었습니다. 원문을 표시했습니다. (복사 버튼 사용)", "warn");
         return;
       }
 
       output.value = cleaned;
+      copyBtn.style.display = "block";
 
-      // 자동 복사
-      navigator.clipboard.writeText(cleaned).catch(() => {});
-      setStatus("본문 추출 완료! (자동 복사됨)", "success");
+      // ✅ 자동 복사 시도(표준+fallback)
+      const copied = await copyToClipboard(cleaned);
+      if (copied) {
+        setStatus("본문 추출 완료! (자동 복사됨)", "success");
+      } else {
+        setStatus("본문 추출 완료! (자동 복사 실패 → 아래 ‘본문 복사’ 버튼을 눌러주세요)", "warn");
+        // 실패 시 사용자가 바로 복사하기 쉽게 선택
+        output.focus();
+        output.select();
+        output.setSelectionRange(0, output.value.length);
+      }
+
     } catch (err) {
       console.error(err);
       setStatus("오류: " + (err.message || "알 수 없는 오류 발생"), "error");
@@ -279,5 +342,3 @@
 
 </body>
 </html>
-
-
