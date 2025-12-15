@@ -155,22 +155,35 @@
     return url;
   }
 
-  // ✅ 텍스트 정리
+ <script>
+  ...
+  // 🔥 여기 이 함수만 교체
   function normalizeText(text) {
     if (!text) return "";
+
     text = text
-      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "") // 이모지 제거
-      .replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "")         // 날짜 라인 제거
+      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "")
+      .replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "")
       .replace(/URL\s*복사|이웃추가|본문\s*기타\s*기능|공유하기|신고하기/g, "")
       .replace(/\r\n/g, "\n");
 
-    const lines = text.split("\n");
-    const filtered = lines
-      .map((l) => l.trim())
-      .filter((l) => l && !l.startsWith("#") && (l.match(/#/g) || []).length < 2);
+    const lines = text
+      .split("\n")
+      .map(l => l.replace(/\s+/g, " ").trim())
+      .filter(l => l.length >= 2);
 
-    return filtered.join(" ").replace(/\s+/g, " ").trim();
+    let joined = lines.join("\n");
+
+    joined = joined
+      .replace(/#[^\s#]+/g, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    return joined.replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
   }
+  ...
+</script>
 
   // ✅ Worker 통해 HTML 가져오기
   async function fetchViaWorker(url) {
@@ -266,4 +279,5 @@
 
 </body>
 </html>
+
 
