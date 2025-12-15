@@ -123,7 +123,7 @@
     status.className = "status " + type;
   }
 
-  // ⭐ 붙여넣기 → 자동 추출
+  // ✅ 붙여넣기 → 자동 추출
   pasteBtn.addEventListener("click", async () => {
     urlInput.focus();
     try {
@@ -131,8 +131,7 @@
       if (text && text.trim()) {
         urlInput.value = text.trim();
         setStatus("주소 붙여넣기 완료! 본문 자동 추출 중...", "success");
-
-        extract(); // 자동 본문 추출 실행
+        extract();
       } else {
         setStatus("클립보드에 주소가 없습니다.", "error");
       }
@@ -141,25 +140,27 @@
     }
   });
 
-  // URL 변환
+  // ✅ URL 정규화 (모바일 우선)
   function normalizeUrl(url) {
-    url = url.trim();
-    const m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
-    if (m) {
-      return `https://blog.naver.com/PostView.naver?blogId=${m[1]}&logNo=${m[2]}`;
-    }
+    url = (url || "").trim();
+
+    // blog.naver.com/아이디/글번호  →  m.blog.naver.com/아이디/글번호
+    let m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
+    if (m) return `https://m.blog.naver.com/${m[1]}/${m[2]}`;
+
+    // PostView.naver?blogId=...&logNo=...  →  m.blog.naver.com/아이디/글번호
+    m = url.match(/PostView\.naver\?.*blogId=([^&]+).*logNo=(\d+)/i);
+    if (m) return `https://m.blog.naver.com/${m[1]}/${m[2]}`;
+
     return url;
   }
 
-  // 텍스트 정리
+  // ✅ 텍스트 정리
   function normalizeText(text) {
     if (!text) return "";
-    // 이모지 제거
-    text = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
-    // 날짜/시간 형식 라인 제거
-    text = text.replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "");
-    // 불필요한 텍스트 제거
     text = text
+      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "") // 이모지 제거
+      .replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "")         // 날짜 라인 제거
       .replace(/URL\s*복사|이웃추가|본문\s*기타\s*기능|공유하기|신고하기/g, "")
       .replace(/\r\n/g, "\n");
 
@@ -168,83 +169,101 @@
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith("#") && (l.match(/#/g) || []).length < 2);
 
-    // 여러 공백을 하나로, 시작/끝 공백 제거
     return filtered.join(" ").replace(/\s+/g, " ").trim();
   }
 
-  // ⭐ 본문 추출
+  // ✅ Worker 통해 HTML 가져오기
+  async function fetchViaWorker(url) {
+    const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
+    if (!res.ok) throw new Error("Worker 오류 또는 URL 접근 실패");
+    return await res.text();
+  }
+
+  // ✅ 문서에서 본문 뽑기
+  function extractContentFromDoc(doc) {
+    // 광고 제거(대충)
+    doc.querySelectorAll('div[class*="ad"], iframe, script, noscript').forEach(el => el.remove());
+
+    const selectors = [
+      ".se-main-container",
+      "#postViewArea",
+      ".se-viewer",
+      ".post_view",
+      "._postView",
+      ".article_view"
+    ];
+
+    for (const sel of selectors) {
+      const el = doc.querySelector(sel);
+      if (el) {
+        const t = (el.innerText || el.textContent || "").trim();
+        if (t) return t;
+      }
+    }
+
+    // 최후: 가장 긴 텍스트 블록
+    let longest = "";
+    doc.querySelectorAll("div, article, section").forEach(d => {
+      const t = (d.innerText || d.textContent || "").trim();
+      if (t.length > longest.length) longest = t;
+    });
+    return longest;
+  }
+
+  // ⭐ 본문 추출 (핵심: iframe(mainFrame) 따라가기)
   async function extract() {
-    let url = urlInput.value.trim();
+    let url = normalizeUrl(urlInput.value);
     if (!url) return;
 
     output.value = "";
     setStatus("HTML 가져오는 중...", "");
 
-    url = normalizeUrl(url);
-
     try {
-      // CORS 문제 해결을 위해 Worker를 통해 HTML 요청
-      const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
-      if (!res.ok) throw new Error("Worker 오류 또는 URL 접근 실패");
+      // 1차: 모바일 우선 URL fetch
+      let html = await fetchViaWorker(url);
+      let doc = new DOMParser().parseFromString(html, "text/html");
 
-      const html = await res.text();
+      // ✅ PC 프레임 구조면(mainFrame) src 따라가서 2차 fetch
+      const mainFrame = doc.querySelector("#mainFrame");
+      if (mainFrame && mainFrame.getAttribute("src")) {
+        setStatus("프레임 구조 감지 → 본문 페이지 2차 로딩 중...", "");
+        let src = mainFrame.getAttribute("src").trim();
+
+        // 상대경로면 절대경로로
+        if (src.startsWith("/")) src = "https://blog.naver.com" + src;
+        if (src.startsWith("//")) src = "https:" + src;
+
+        html = await fetchViaWorker(src);
+        doc = new DOMParser().parseFromString(html, "text/html");
+      }
+
       setStatus("본문 분석 중...", "");
+      const content = extractContentFromDoc(doc);
 
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, "text/html");
-
-      // 광고 요소 제거
-      doc.querySelectorAll('div[class*="ad"]').forEach(el => el.remove());
-
-      const selectors = [
-        ".se-main-container",
-        ".se-viewer",
-        ".se_viewArea",
-        "#postViewArea",
-        ".post_view",
-        "._postView",
-        ".article_view"
-      ];
-
-      let content = "";
-
-      // 네이버 블로그 콘텐츠 영역 탐색
-      for (const sel of selectors) {
-        const el = doc.querySelector(sel);
-        if (el) {
-          content = el.innerText.trim();
-          break;
-        }
-      }
-
-      // 콘텐츠가 없을 경우 가장 긴 innerText를 가진 div를 사용 (최후의 수단)
-      if (!content) {
-        let longest = "";
-        doc.querySelectorAll("div").forEach(d => {
-          const t = d.innerText.trim();
-          if (t.length > longest.length) longest = t;
-        });
-        content = longest;
-      }
-
-      if (!content.trim()) {
-        setStatus("본문을 찾지 못했습니다. URL을 확인해 주세요.", "error");
+      if (!content || !content.trim()) {
+        setStatus("본문을 찾지 못했습니다. (비공개/성인/차단 글일 수 있음)", "error");
         return;
       }
 
       const cleaned = normalizeText(content);
+      if (!cleaned) {
+        setStatus("본문은 잡혔지만 정리 과정에서 전부 제거되었습니다. (필터 조건이 너무 강함)", "warn");
+        output.value = content.trim();
+        return;
+      }
+
       output.value = cleaned;
-      
-      // 추출된 텍스트 클립보드에 복사
+
+      // 자동 복사
       navigator.clipboard.writeText(cleaned).catch(() => {});
-
       setStatus("본문 추출 완료! (자동 복사됨)", "success");
-
     } catch (err) {
       console.error(err);
       setStatus("오류: " + (err.message || "알 수 없는 오류 발생"), "error");
     }
   }
 </script>
+
 </body>
 </html>
+
