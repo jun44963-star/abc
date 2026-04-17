@@ -77,6 +77,27 @@
 </head>
 
 <body>
+<div style="max-width:720px; margin: 0 auto 20px auto; padding: 30px; border: 3px solid #f1c40f; border-radius: 20px; background-color: #fff; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.1); font-family: 'Apple SD Gothic Neo', sans-serif;">
+    <div style="display: inline-block; background: #ff4757; color: white; padding: 5px 15px; border-radius: 50px; font-weight: bold; font-size: 14px; margin-bottom: 15px;">
+        선착순 응모권 300개 증정
+    </div>
+    
+    <h2 style="margin: 0; color: #333; font-size: 20px; border:none !important; background:none !important;">누구나 당첨의 주인공!</h2>
+    <div style="margin: 10px 0 20px 0;">
+        <span style="font-size: 32px; font-weight: 900; color: #e67e22;">1등 당첨금</span>
+        <span style="font-size: 42px; font-weight: 900; color: #ff4757; text-decoration: underline;"> 3,000만원</span>
+    </div>
+
+    <div style="background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin-bottom: 25px;">
+        <p style="margin: 0 0 5px 0; font-size: 13px; color: #888;">아래 초대코드를 입력하면 응모권이 즉시 지급됩니다</p>
+        <code style="font-size: 24px; font-weight: bold; color: #000; letter-spacing: 2px;">R18TH</code>
+    </div>
+
+    <a href="https://link.lucki.ies/d53z0d?invite_code=R18TH" target="_blank" rel="noopener" style="display: block; padding: 20px; background: linear-gradient(to right, #ff4757, #ff6b81); color: white; text-decoration: none; font-size: 20px; font-weight: bold; border-radius: 15px; transition: transform 0.2s;">
+        지금 바로 3,000만원 도전하기 🚀
+    </a>
+</div>
+
 <div class="wrapper">
   <h1>네이버 블로그글 자동 추출기</h1>
 
@@ -118,9 +139,7 @@
     status.className = "status " + type;
   }
 
-  // ✅ 클립보드 복사: 표준 API + fallback(execCommand)
   async function copyToClipboard(text) {
-    // 1) 표준 API (HTTPS + 사용자 제스처 환경에서 안정)
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
@@ -128,12 +147,11 @@
       }
     } catch (e) {}
 
-    // 2) fallback: textarea 선택 + execCommand(copy)
     try {
       output.focus();
       output.value = text;
       output.select();
-      output.setSelectionRange(0, text.length); // 모바일 대응
+      output.setSelectionRange(0, text.length);
       const ok = document.execCommand("copy");
       output.blur();
       return !!ok;
@@ -142,7 +160,6 @@
     }
   }
 
-  // ✅ 붙여넣기 → 자동 추출
   pasteBtn.addEventListener("click", async () => {
     urlInput.focus();
     try {
@@ -159,28 +176,20 @@
     }
   });
 
-  // ✅ URL 정규화 (모바일 우선)
   function normalizeUrl(url) {
     url = (url || "").trim();
-
-    // blog.naver.com/아이디/글번호  →  m.blog.naver.com/아이디/글번호
     let m = url.match(/^https?:\/\/blog\.naver\.com\/([^\/]+)\/(\d+)/);
     if (m) return `https://m.blog.naver.com/${m[1]}/${m[2]}`;
-
-    // PostView.naver?blogId=...&logNo=...  →  m.blog.naver.com/아이디/글번호
     m = url.match(/PostView\.naver\?.*blogId=([^&]+).*logNo=(\d+)/i);
     if (m) return `https://m.blog.naver.com/${m[1]}/${m[2]}`;
-
     return url;
   }
 
-  // ✅ 텍스트 정리(너무 공격적으로 삭제하지 않음)
   function normalizeText(text) {
     if (!text) return "";
-
     text = text
-      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "") // 이모지 제거(원치 않으면 주석)
-      .replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "")         // 날짜 라인 제거(과하면 주석)
+      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "")
+      .replace(/^\s*\d{4}\.\s*\d{1,2}\.\s*\d{1,2}.*$/gm, "")
       .replace(/URL\s*복사|이웃추가|본문\s*기타\s*기능|공유하기|신고하기/g, "")
       .replace(/\r\n/g, "\n");
 
@@ -190,40 +199,24 @@
       .filter(l => l.length >= 2);
 
     let joined = lines.join("\n");
-
-    // 줄 삭제가 아니라 "#태그만" 제거
     joined = joined
       .replace(/#[^\s#]+/g, "")
       .replace(/\s{2,}/g, " ")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
-    // 최종 출력은 한 줄(원하면 줄바꿈 유지로 바꿀 수 있음)
     return joined.replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
   }
 
-  // ✅ Worker 통해 HTML 가져오기
   async function fetchViaWorker(url) {
     const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
     if (!res.ok) throw new Error("Worker 오류 또는 URL 접근 실패");
     return await res.text();
   }
 
-  // ✅ 문서에서 본문 뽑기
   function extractContentFromDoc(doc) {
-    // 광고/불필요 요소 제거(가볍게)
     doc.querySelectorAll('iframe, script, noscript, div[class*="ad"], div[class*="Ad"]').forEach(el => el.remove());
-
-    const selectors = [
-      ".se-main-container",
-      "#postViewArea",
-      ".se-viewer",
-      ".post_view",
-      "._postView",
-      ".article_view",
-      "article"
-    ];
-
+    const selectors = [".se-main-container", "#postViewArea", ".se-viewer", ".post_view", "._postView", ".article_view", "article"];
     for (const sel of selectors) {
       const el = doc.querySelector(sel);
       if (el) {
@@ -231,8 +224,6 @@
         if (t) return t;
       }
     }
-
-    // 최후: 가장 긴 텍스트 블록
     let longest = "";
     doc.querySelectorAll("div, article, section, main").forEach(d => {
       const t = (d.innerText || d.textContent || "").trim();
@@ -241,58 +232,43 @@
     return longest;
   }
 
-  // ⭐ 본문 추출 (iframe(mainFrame) 따라가기)
   async function extract() {
     let url = normalizeUrl(urlInput.value);
     if (!url) return;
-
     output.value = "";
     setStatus("HTML 가져오는 중...", "");
 
     try {
-      // 1차: 모바일 우선 URL fetch
       let html = await fetchViaWorker(url);
       let doc = new DOMParser().parseFromString(html, "text/html");
-
-      // PC 프레임 구조면(mainFrame) src 따라가서 2차 fetch
       const mainFrame = doc.querySelector("#mainFrame");
       if (mainFrame && mainFrame.getAttribute("src")) {
         setStatus("프레임 구조 감지 → 본문 페이지 2차 로딩 중...", "");
         let src = mainFrame.getAttribute("src").trim();
         if (src.startsWith("/")) src = "https://blog.naver.com" + src;
         if (src.startsWith("//")) src = "https:" + src;
-
         html = await fetchViaWorker(src);
         doc = new DOMParser().parseFromString(html, "text/html");
       }
-
       setStatus("본문 분석 중...", "");
       const content = extractContentFromDoc(doc);
-
       if (!content || !content.trim()) {
-        setStatus("본문을 찾지 못했습니다. (비공개/성인/차단 글일 수 있음)", "error");
+        setStatus("본문을 찾지 못했습니다.", "error");
         return;
       }
-
       const cleaned = normalizeText(content);
       const finalText = cleaned || content.trim();
       output.value = finalText;
-
-      // ✅ 자동 복사 시도(표준+fallback)
       const copied = await copyToClipboard(finalText);
       if (copied) {
         setStatus("본문 추출 완료! (자동 복사됨)", "success");
       } else {
-        setStatus("본문 추출 완료! 자동 복사가 차단되었습니다. Ctrl+C로 복사하세요.", "warn");
-        // 실패 시 사용자가 바로 복사하기 쉽게 전체 선택
+        setStatus("본문 추출 완료! Ctrl+C로 복사하세요.", "warn");
         output.focus();
         output.select();
-        output.setSelectionRange(0, output.value.length);
       }
-
     } catch (err) {
-      console.error(err);
-      setStatus("오류: " + (err.message || "알 수 없는 오류 발생"), "error");
+      setStatus("오류: " + (err.message || "오류 발생"), "error");
     }
   }
 </script>
