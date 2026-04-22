@@ -5,103 +5,98 @@
   <title>네이버 블로그글 자동 추출기</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body{
-      margin:0; padding:20px;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:#020617; color:#e5e7eb;
+    body {
+      margin: 0; 
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617; 
+      color: #e5e7eb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
-    .wrapper{
-      max-width:720px; margin:0 auto;
-      background:#020617;
-      padding:24px 20px;
-      border-radius:16px;
-      border:1px solid #1f2937;
-      box-shadow:0 20px 40px rgba(0,0,0,.6);
+    .wrapper {
+      width: 100%;
+      max-width: 720px; 
+      margin: 0 auto;
+      background: #020617;
+      padding: 24px 20px;
+      border-radius: 16px;
+      border: 1px solid #1f2937;
+      box-shadow: 0 20px 40px rgba(0,0,0,.6);
+      box-sizing: border-box;
     }
-    h1{margin:0 0 10px;font-size:1.4rem;}
-    label{font-size:.9rem;color:#9ca3af;}
-    .hint{
-      font-size:.75rem;color:#6b7280;
-      margin:-8px 0 10px; line-height:1.4;
+    h1 { margin: 0 0 10px; font-size: 1.4rem; }
+    label { font-size: .9rem; color: #9ca3af; }
+    .hint {
+      font-size: .75rem; color: #6b7280;
+      margin: -8px 0 10px; line-height: 1.4;
     }
-    input, textarea{
-      width:100%;
-      margin:6px 0 14px;
-      padding:12px;
-      background:#0f172a;
-      border:1px solid #1f2937;
-      color:#e5e7eb;
-      border-radius:10px;
-      box-sizing:border-box;
+    input, textarea {
+      width: 100%;
+      margin: 6px 0 14px;
+      padding: 12px;
+      background: #0f172a;
+      border: 1px solid #1f2937;
+      color: #e5e7eb;
+      border-radius: 10px;
+      box-sizing: border-box;
+      outline: none;
     }
-    textarea{
-      min-height:230px;
-      white-space:pre-wrap;
-      padding:12px;
+    input:focus, textarea:focus {
+      border-color: #0f766e;
     }
-    button{
-      width:100%;
-      padding:12px;
-      border-radius:999px;
-      border:none;
-      font-weight:800;
-      cursor:pointer;
-      font-size:.9rem;
-      transition:background-color .2s, transform .05s;
-      user-select:none;
+    textarea {
+      min-height: 230px;
+      white-space: pre-wrap;
+      padding: 12px;
+      resize: vertical;
     }
-    button:active{transform:scale(.99);}
-    #pasteBtn{
-      background:#0f766e;
-      color:#e5e7eb;
-      margin-bottom:10px;
+    button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 999px;
+      border: none;
+      font-weight: 800;
+      cursor: pointer;
+      font-size: .9rem;
+      transition: background-color .2s, transform .05s;
+      user-select: none;
     }
-    #pasteBtn:hover{background:#115e59;}
+    button:active { transform: scale(.99); }
+    #pasteBtn {
+      background: #0f766e;
+      color: #e5e7eb;
+      margin-bottom: 10px;
+    }
+    #pasteBtn:hover { background: #115e59; }
 
-    .status{font-size:.8rem;margin:8px 0 12px;color:#9ca3af;}
-    .success{color:#4ade80 !important;}
-    .error{color:#f87171 !important;}
-    .warn{color:#facc15 !important;}
+    .status { font-size: .8rem; margin: 8px 0 12px; color: #9ca3af; min-height: 1.2em; }
+    .success { color: #4ade80 !important; }
+    .error { color: #f87171 !important; }
+    .warn { color: #facc15 !important; }
 
-    .footer{
-      margin-top:20px;
-      text-align:center;
-      font-size:.8rem;
+    .top-link {
+      text-align: right;
+      font-size: .8rem;
+      margin-bottom: 10px;
     }
-    .footer a{
-      color:#38bdf8;
-      text-decoration:none;
+    .top-link a {
+      color: #38bdf8;
+      text-decoration: none;
     }
-    .footer a:hover{text-decoration:underline;}
+    .top-link a:hover { text-decoration: underline; }
   </style>
 </head>
 
 <body>
-<a href="http://cnh.bulgukto.or.kr/" target="_blank" style="display: block; text-decoration: none; max-width: 500px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.08); font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; transition: all 0.3s ease;">
-  
-  <div style="background: linear-gradient(135deg, #5C6BC0, #3949AB); color: #ffffff; padding: 30px 20px; text-align: center;">
-    <h2 style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.4; letter-spacing: -0.5px;">마음건강을 위한<br>정신재활시설</h2>
-    <div style="width: 40px; height: 2px; background: rgba(255,255,255,0.5); margin: 15px auto;"></div>
-    <p style="margin: 0; font-size: 15px; opacity: 0.9; font-weight: 400;">당신의 소중한 일상, 그 새로운 시작을 함께합니다</p>
-  </div>
-  
-  <div style="background-color: #ffffff; padding: 25px 20px; text-align: center;">
-    <p style="margin: 0 0 20px 0; color: #666666; font-size: 14px; line-height: 1.6;">
-      재활 프로그램 안내 및 상담을 원하시면<br>홈페이지를 방문해 주세요.
-    </p>
-    <span style="display: inline-block; background-color: #3949AB; color: #ffffff; padding: 12px 30px; font-size: 15px; font-weight: 600; border-radius: 30px; box-shadow: 0 4px 6px rgba(57, 73, 171, 0.2);">
-      공식 홈페이지 바로가기
-    </span>
-    <p style="margin: 15px 0 0 0; color: #999999; font-size: 12px;">http://cnh.bulgukto.or.kr/</p>
-  </div>
-
-</a>
-
-</a>
-</div>
-</div>
 
 <div class="wrapper">
+  <div class="top-link">
+    <a href="https://hjkim20089.tistory.com/" target="_blank">만든이 홈페이지 바로가기</a>
+  </div>
   <h1>네이버 블로그글 자동 추출기</h1>
 
   <label>네이버 글 주소</label>
@@ -116,16 +111,12 @@
     ※ 자동복사가 차단되면 본문이 자동으로 전체선택됩니다 → Ctrl+C로 복사하세요.
   </p>
 
-  <button id="pasteBtn">Ctrl+V 붙여넣기 (자동 추출)</button>
-
-  <div id="status" class="status"></div>
-
   <label>추출된 본문</label>
   <textarea id="output" placeholder="여기에 본문이 표시됩니다."></textarea>
 
-  <div class="footer">
-    <a href="https://hjkim20089.tistory.com/" target="_blank">만든이 홈페이지 바로가기</a>
-  </div>
+  <div id="status" class="status"></div>
+
+  <button id="pasteBtn">Ctrl+V 붙여넣기 (자동 추출)</button>
 </div>
 
 <script>
@@ -175,7 +166,15 @@
         setStatus("클립보드에 주소가 없습니다.", "error");
       }
     } catch (e) {
-      setStatus("자동 붙여넣기 차단됨. Ctrl+V로 직접 입력하세요.", "error");
+      setStatus("자동 붙여넣기 권한이 없습니다. 텍스트 박스에 Ctrl+V로 직접 입력 후 엔터를 누르세요.", "error");
+    }
+  });
+
+  // 직접 입력시 엔터키로 작동하도록 이벤트 추가
+  urlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      setStatus("주소 입력 완료! 본문 자동 추출 중...", "success");
+      extract();
     }
   });
 
@@ -213,7 +212,7 @@
 
   async function fetchViaWorker(url) {
     const res = await fetch(WORKER_URL + "?url=" + encodeURIComponent(url));
-    if (!res.ok) throw new Error("Worker 오류 또는 URL 접근 실패");
+    if (!res.ok) throw new Error("서버 접근 실패. 주소를 확인해주세요.");
     return await res.text();
   }
 
@@ -239,39 +238,43 @@
     let url = normalizeUrl(urlInput.value);
     if (!url) return;
     output.value = "";
-    setStatus("HTML 가져오는 중...", "");
+    setStatus("데이터를 가져오는 중...", "");
 
     try {
       let html = await fetchViaWorker(url);
       let doc = new DOMParser().parseFromString(html, "text/html");
       const mainFrame = doc.querySelector("#mainFrame");
+      
       if (mainFrame && mainFrame.getAttribute("src")) {
-        setStatus("프레임 구조 감지 → 본문 페이지 2차 로딩 중...", "");
+        setStatus("페이지 구조 분석 중...", "");
         let src = mainFrame.getAttribute("src").trim();
         if (src.startsWith("/")) src = "https://blog.naver.com" + src;
         if (src.startsWith("//")) src = "https:" + src;
         html = await fetchViaWorker(src);
         doc = new DOMParser().parseFromString(html, "text/html");
       }
-      setStatus("본문 분석 중...", "");
+      
+      setStatus("본문 추출 중...", "");
       const content = extractContentFromDoc(doc);
       if (!content || !content.trim()) {
-        setStatus("본문을 찾지 못했습니다.", "error");
+        setStatus("본문을 찾지 못했습니다. 주소가 정확한지 확인해주세요.", "error");
         return;
       }
+      
       const cleaned = normalizeText(content);
       const finalText = cleaned || content.trim();
       output.value = finalText;
+      
       const copied = await copyToClipboard(finalText);
       if (copied) {
-        setStatus("본문 추출 완료! (자동 복사됨)", "success");
+        setStatus("본문 추출 완료! (클립보드에 자동 복사됨)", "success");
       } else {
-        setStatus("본문 추출 완료! Ctrl+C로 복사하세요.", "warn");
+        setStatus("본문 추출 완료! 텍스트를 선택하여 복사하세요.", "warn");
         output.focus();
         output.select();
       }
     } catch (err) {
-      setStatus("오류: " + (err.message || "오류 발생"), "error");
+      setStatus("오류: " + (err.message || "오류가 발생했습니다."), "error");
     }
   }
 </script>
